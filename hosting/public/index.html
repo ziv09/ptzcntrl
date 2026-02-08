@@ -824,14 +824,24 @@
                 throttleCommand(action, parseInt(force * moveSpeed));
             });
 
+            // Enhanced Failsafe: Global Listener
+            // When nipple starts, add global up listener
+            const globalStop = () => sendCommand('STOP');
+
+            joystickManager.on('start', () => {
+                window.addEventListener('touchend', globalStop);
+                window.addEventListener('mouseup', globalStop);
+            });
+
             joystickManager.on('end', () => {
+                window.removeEventListener('touchend', globalStop);
+                window.removeEventListener('mouseup', globalStop);
                 sendCommand('STOP');
             });
 
-            // Failsafe: Force STOP on release of the area itself
-            // sometimes nipplejs end event might be missed if finger slides off
-            zone.addEventListener('touchend', () => sendCommand('STOP'));
-            zone.addEventListener('mouseup', () => sendCommand('STOP'));
+            // Keep local failsafe just in case
+            zone.addEventListener('touchend', globalStop);
+            zone.addEventListener('mouseup', globalStop);
         }
 
         let lastCmdTime = 0;
@@ -849,23 +859,39 @@
                 const btn = document.getElementById(id);
                 const start = (e) => {
                     if (isLocked) return;
-                    e.preventDefault();
+                    e.preventDefault(); // Prevent ghost clicks
+
+                    // Stop any existing intervals first
                     if (zoomInterval) clearInterval(zoomInterval);
+
+                    // Send initial command
                     sendCommand(action);
+
+                    // Start auto-repeat
                     zoomInterval = setInterval(() => sendCommand(action), 200);
+
+                    // Add Global Listeners to catch release ANYWHERE
+                    window.addEventListener('touchend', end);
+                    window.addEventListener('mouseup', end);
                 };
+
                 const end = (e) => {
-                    if (isLocked) return;
-                    e.preventDefault();
-                    clearInterval(zoomInterval);
-                    sendCommand('STOP');
+                    // Clean up global listeners
+                    window.removeEventListener('touchend', end);
+                    window.removeEventListener('mouseup', end);
+
+                    if (zoomInterval) {
+                        clearInterval(zoomInterval);
+                        zoomInterval = null;
+                        sendCommand('STOP'); // Enforce STOP
+                    }
                 };
 
                 btn.addEventListener('touchstart', start);
-                btn.addEventListener('touchend', end);
                 btn.addEventListener('mousedown', start);
-                btn.addEventListener('mouseup', end);
-                btn.addEventListener('mouseleave', end);
+
+                // Keep mouseleave just in case, but global mouseup handles most
+                // btn.addEventListener('mouseleave', end);
             };
 
             setupBtn('btn-zoom-in', 'ZOOM_IN');
