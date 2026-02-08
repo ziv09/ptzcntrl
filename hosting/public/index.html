@@ -901,7 +901,8 @@
                     if (zoomInterval) {
                         clearInterval(zoomInterval);
                         zoomInterval = null;
-                        sendCommand('STOP'); // Enforce STOP
+                        sendCommand('ZOOM_STOP'); // Send Z50 command
+                        setTimeout(() => sendCommand('ZOOM_STOP'), 50); // Double-send for reliability
                     }
                 };
 

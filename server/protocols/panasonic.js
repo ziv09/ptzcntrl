@@ -137,6 +137,8 @@ function mapCommandToCgi(action, speed, vector = null) {
         case 'ZOOM_OUT':
             zoomVal = BASE_VAL - Math.round(speedFactor); // 50-01
             return `Z${pad(zoomVal)}`;
+        case 'ZOOM_STOP':
+            return 'Z50';
         case 'STOP':
             // Use PTS format to match move commands
             return 'PTS5050';
