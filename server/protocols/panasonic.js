@@ -79,6 +79,9 @@ async function stop(device) {
 /**
  * Map generic action to Panasonic CGI command
  */
+/**
+ * Map generic action to Panasonic CGI command
+ */
 const MAX_DELTA = 49;
 const BASE_VAL = 50;
 
@@ -88,32 +91,20 @@ const BASE_VAL = 50;
 function mapCommandToCgi(action, speed, vector = null) {
     // Ensure speed is 0-100
     const safeSpeed = Math.max(0, Math.min(100, speed));
-    const speedDelta = Math.round((safeSpeed / 100) * MAX_DELTA);
+    const speedFactor = (safeSpeed / 100) * MAX_DELTA; // User Spec: (globalSpeed / 100) * MAX_DELTA
 
-    // Vector Logic (Exact User Reference)
+    // Vector Logic (User Reference Implementation)
     if (action === 'PTZ_VECTOR' && vector) {
-        // user ref: speedFactor = (globalSpeed / 100) * MAX_DELTA
-        // current speed arg IS globalSpeed * force.
-        // Wait, User's code: move(x, y). x/y are -1 to 1.
-        // globalSpeed is 0-100.
-        // My 'safeSpeed' passed from client is (force * moveSpeed).
-        // if force=1, moveSpeed=100 -> speed=100.
-        // So I can use speedDelta directly as the 'weight' of full deflection.
-        // Formula: 50 + (input * speedDelta)
-        // input is vector.x, vector.y
+        // Deadzone Check (User Spec: 0.1)
+        const deadzone = 0.1;
+        if (Math.abs(vector.x) < deadzone && Math.abs(vector.y) < deadzone) {
+            return 'P50T50Z50'; // Stop
+        }
 
-        const panVal = clamp(BASE_VAL + Math.round(vector.x * speedDelta), 1, 99);
-        const tiltVal = clamp(BASE_VAL + Math.round(vector.y * speedDelta), 1, 99);
-
-        // Invert Tilt? 
-        // nipplejs up is +y?
-        // Panasonic: T99 is UP. T01 is DOWN.
-        // If vector.y is +1 (Up), val = 50 + 49 = 99. Correct. 
-        // If nipplejs sends -y for Up, I need to check. NippleJS usually is Up=-1?
-        // Standard joystick UI libraries often have Y axis inverted (Up is negative).
-        // Let's assume NippleJS 'vector' is Cartesian (Up is positive). 
-        // If User says "chaotic", maybe axis is wrong.
-        // But let's stick to the math: 50 + (y * delta).
+        // Logic: 50 + round(input * speedFactor)
+        // input: -1.0 ~ 1.0 (Left/Down ~ Right/Up)
+        const panVal = clamp(BASE_VAL + Math.round(vector.x * speedFactor), 1, 99);
+        const tiltVal = clamp(BASE_VAL + Math.round(vector.y * speedFactor), 1, 99);
 
         return `PTS${pad(panVal)}${pad(tiltVal)}`;
     }
@@ -122,25 +113,29 @@ function mapCommandToCgi(action, speed, vector = null) {
     let panVal = BASE_VAL;
     let tiltVal = BASE_VAL;
     let zoomVal = BASE_VAL;
+    // For discrete actions if vector is null - use same speedFactor? 
+    // User spec calcValue delta = round(input * speedFactor).
+    // For Discrete Button: input is +/- 1.0.
+    const delta = Math.round(1.0 * speedFactor);
 
     switch (action) {
         case 'PAN_LEFT':
-            panVal = BASE_VAL - speedDelta;
+            panVal = BASE_VAL - delta;
             break;
         case 'PAN_RIGHT':
-            panVal = BASE_VAL + speedDelta;
+            panVal = BASE_VAL + delta;
             break;
         case 'TILT_UP':
-            tiltVal = BASE_VAL + speedDelta; // T99
+            tiltVal = BASE_VAL + delta; // T99
             break;
         case 'TILT_DOWN':
-            tiltVal = BASE_VAL - speedDelta; // T01
+            tiltVal = BASE_VAL - delta; // T01
             break;
         case 'ZOOM_IN':
-            zoomVal = BASE_VAL + speedDelta; // 50-99
+            zoomVal = BASE_VAL + Math.round(speedFactor); // 50-99
             return `Z${pad(zoomVal)}`;
         case 'ZOOM_OUT':
-            zoomVal = BASE_VAL - speedDelta; // 50-01
+            zoomVal = BASE_VAL - Math.round(speedFactor); // 50-01
             return `Z${pad(zoomVal)}`;
         case 'STOP':
             return 'P50T50Z50';
