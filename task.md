@@ -1,0 +1,28 @@
+# Secure Remote PTZ Camera Control System
+
+## Project Initialization
+- [ ] Create project directory structure <!-- id: 0 -->
+- [ ] Create `package.json` for Electron app <!-- id: 1 -->
+- [ ] (Removed) Create `config.json` template <!-- id: 2 -->
+
+## Firebase Setup
+- [ ] Define Firebase Data Structure (JSON Schema) <!-- id: 3 -->
+- [ ] Create Firebase Security Rules (`database.rules.json`) <!-- id: 4 -->
+
+## Electron App Development
+- [ ] **Main Process:** Setup Electron, Tray, and IPC <!-- id: 5 -->
+- [ ] **Renderer Process:** Create Dashboard UI (HTML/CSS) <!-- id: 6 -->
+- [ ] **Integration:** PTZ Logic & Auto-Discovery in Main Process <!-- id: 7 -->
+- [ ] **Web GUI:** Express Server integration in Main Process <!-- id: 8 -->
+- [ ] **Security:** Watchdog, Allowlist & Password Logic <!-- id: 9 -->
+
+## Remote Web App (Firebase Hosting)
+- [ ] Create `hosting/public` directory <!-- id: 12 -->
+- [ ] Implement Mobile-Friendly Control Interface (`index.html`) <!-- id: 13 -->
+- [ ] Implement Firebase Client SDK Logic (`app.js`) <!-- id: 14 -->
+- [ ] Configure `firebase.json` for Hosting <!-- id: 15 -->
+
+## Packaging & Deployment
+- [ ] Configure `electron-builder` for Windows .exe (Client) <!-- id: 10 -->
+- [ ] Create usage documentation <!-- id: 11 -->
+- [ ] Deploy Web App to Firebase Hosting <!-- id: 16 -->

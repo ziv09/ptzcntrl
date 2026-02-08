@@ -1,0 +1,35 @@
+{
+  "name": "secure-ptz-control",
+  "version": "1.0.0",
+  "description": "Secure Remote PTZ Camera Control System (Electron)",
+  "main": "server/main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "author": "IoT Solutions Architect",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.6.7",
+    "express": "^4.18.2",
+    "firebase-admin": "^12.0.0",
+    "ip": "^2.0.1",
+    "node-onvif": "^0.1.7",
+    "systeminformation": "^5.21.22"
+  },
+  "devDependencies": {
+    "electron": "^29.1.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.ptz.control",
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "directories": {
+      "output": "dist"
+    }
+  }
+}

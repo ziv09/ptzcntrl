@@ -1,0 +1,55 @@
+# Secure Remote PTZ Control System
+
+## Project Overview
+This system allows you to control Panasonic PTZ cameras remotely via a secure Firebase relay.
+- **Client (Windows Exe):** Runs on the local PC, connects to cameras.
+- **Web App:** Hosted on Firebase, used for remote control.
+
+## 1. Setup & Installation
+
+### Prerequisites
+- Node.js installed on your development machine.
+- Firebase CLI installed (`npm install -g firebase-tools`).
+
+### Install Dependencies
+Run the following in the project root:
+```bash
+npm install
+```
+
+## 2. Deploy Web App (Remote Control)
+To make the remote control interface live on the internet:
+
+1. Login to Firebase (if not logged in):
+   ```bash
+   firebase login
+   ```
+2. Deploy Hosting & Rules:
+   ```bash
+   firebase deploy
+   ```
+   *This will upload `hosting/public` and apply [firebase/database.rules.json](file:///C:/Users/wfsya/.gemini/antigravity/brain/29fcd8f6-491f-44a6-977f-dc86a4a6d7b0/firebase/database.rules.json).*
+
+Your Web App URL will be: `https://ptzcntrl.web.app`
+
+## 3. Build Windows Client (Exe)
+To generate the standalone executable for the Local PC:
+
+```bash
+npm run dist
+```
+The output `.exe` file will be in the `dist/` folder.
+
+## 4. Usage
+
+### Step A: Local PC (Client)
+1. Run the `.exe` (or `npm start` for dev).
+2. A Dashboard window will appear. click **"Open Settings (Web)"**.
+3. A browser tab opens (`localhost:5000`). Enter a **Room ID** (e.g., `OFFICE-01`) and a **Secret Password**.
+4. Click **Start Server**. The Dashboard should show "Connected".
+5. You can now click **"Hide to Tray"** to keep it running in the background.
+
+### Step B: Remote User
+1. Open the Web App URL (`https://ptzcntrl.web.app`).
+2. Enter the same **Room ID** and **Password**.
+3. You will see the control interface. Select a camera and use the D-Pad to control.

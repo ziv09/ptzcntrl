@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Build Output
+dist/
+build/
+
+# Environment Variables & Secrets
+.env
+server/serviceAccountKey.json
+
+# System Files
+.DS_Store
+Thumbs.db
+
+# Firebase
+.firebase/

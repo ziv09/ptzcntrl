@@ -1,0 +1,5 @@
+{
+  "artifactType": "ARTIFACT_TYPE_IMPLEMENTATION_PLAN",
+  "summary": "Implementation plan for the Secure Remote PTZ Camera Control System.\nIncludes details on:\n- Firebase Data Structure (Rooms, COMMANDS)\n- Security Rules (Strict Write Access)\n- Node.js Local Client (Auto-Discovery, GUI, Watchdog, Allowlist)\n- Packaging Strategy (pkg)",
+  "updatedAt": "2026-02-08T06:39:22.519215400Z"
+}

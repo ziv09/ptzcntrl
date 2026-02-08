@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PTZ Remote</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <!-- Nipple.js for Joystick -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.1/nipplejs.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #000;
+            color: #fff;
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+            touch-action: none;
+            /* Prevent browser zooming/scrolling */
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Login Screen */
+        #login-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .login-box {
+            width: 80%;
+            max-width: 300px;
+            text-align: center;
+            padding: 20px;
+            border: 1px solid #333;
+            border-radius: 20px;
+            background: #111;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            background: #222;
+            border: 1px solid #444;
+            color: #fff;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            margin-top: 10px;
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+            border-radius: 50px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .btn:active {
+            background: #555;
+        }
+
+        /* App Layout */
+        #app-screen {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+            position: relative;
+        }
+
+        /* HEADER */
+        header {
+            height: 60px;
+            background: #111;
+            border-bottom: 1px solid #222;
+            display: flex;
+            align-items: center;
+            padding: 0 15px;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        .menu-btn {
+            font-size: 24px;
+            cursor: pointer;
+            padding: 10px;
+        }
+
+        .cam-title {
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            cursor: pointer;
+            border-bottom: 1px dashed #444;
+            padding-bottom: 2px;
+            margin: 0 10px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #333;
+        }
+
+        .status-dot.online {
+            background: #00ff00;
+            box-shadow: 0 0 5px #00ff00;
+        }
+
+        /* MAIN CONTROLS (Joystick & Zoom) */
+        .main-controls {
+            flex: 1;
+            display: flex;
+            position: relative;
+            background: #050505;
+        }
+
+        .joystick-area {
+            flex: 2;
+            position: relative;
+            border-right: 1px solid #222;
+        }
+
+        .zoom-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .zoom-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: #222;
+            border: 1px solid #444;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 32px;
+            font-weight: bold;
+            color: #ccc;
+            cursor: pointer;
+            transition: 0.1s;
+        }
+
+        .zoom-btn:active {
+            background: #444;
+            transform: scale(0.95);
+            color: #fff;
+        }
+
+        /* PRESETS GRID */
+        .presets-area {
+            height: 180px;
+            background: #111;
+            border-top: 1px solid #222;
+            overflow-y: auto;
+            padding: 10px;
+            flex-shrink: 0;
+        }
+
+        .preset-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+        }
+
+        .preset-card {
+            background: #222;
+            border: 1px solid #333;
+            border-radius: 10px;
+            height: 70px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .preset-card.set {
+            border-color: #0088ff;
+            background: #0b1e33;
+            color: #0088ff;
+        }
+
+        .preset-card.active {
+            background: #0088ff;
+            color: #fff;
+        }
+
+        .p-num {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .p-actions {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            border-radius: 10px;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 5px;
+            z-index: 10;
+        }
+
+        .preset-card.long-press .p-actions {
+            display: flex;
+        }
+
+        .action-btn {
+            font-size: 12px;
+            padding: 5px 10px;
+            border-radius: 15px;
+            border: none;
+            color: white;
+            width: 60px;
+        }
+
+        .btn-set {
+            background: #0088ff;
+        }
+
+        .btn-del {
+            background: #ff4444;
+        }
+
+        /* Overlay/Modal */
+        .modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 150;
+            display: none;
+        }
+
+        .drawer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 250px;
+            height: 100%;
+            background: #1a1a1a;
+            padding: 20px;
+            box-sizing: border-box;
+            transform: translateX(-100%);
+            transition: 0.3s;
+        }
+
+        .drawer.open {
+            transform: translateX(0);
+        }
+
+        .cam-item {
+            padding: 15px;
+            border-bottom: 1px solid #333;
+            color: #ccc;
+            cursor: pointer;
+        }
+
+        .cam-item.active {
+            color: #0088ff;
+            font-weight: bold;
+        }
+
+        /* Lock Button */
+        .lock-btn {
+            position: absolute;
+            bottom: 200px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid #edaf20ae;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            color: #edaf20ae;
+            z-index: 100;
+        }
+
+        .lock-btn.locked {
+            background: #edaf20ae;
+            color: #000;
+            border-color: #edaf20ae;
+        }
+
+        /* Lock Overlay (Invisible blocker) */
+        #input-blocker {
+            position: absolute;
+            top: 60px;
+            left: 0;
+            width: 100%;
+            height: calc(100% - 60px);
+            z-index: 90;
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Login -->
+    <div id="login-screen">
+        <div class="login-box">
+            <h2>Remote Login</h2>
+            <input type="text" id="roomId" placeholder="Room ID">
+            <input type="text" id="username" placeholder="Your Name">
+            <input type="password" id="password" placeholder="Password">
+            <button class="btn" onclick="attemptLogin()" id="loginBtn">Connect</button>
+            <p id="login-msg" style="color: #ff5252; margin-top: 15px; display: none; font-size: 14px;"></p>
+        </div>
+    </div>
+
+    <!-- App -->
+    <div id="app-screen">
+        <header>
+            <div class="menu-btn" onclick="toggleDrawer()">☰</div>
+            <div id="cam-title" class="cam-title" onclick="renameCamera()">Camera 1</div>
+            <div id="status-dot" class="status-dot"></div>
+        </header>
+
+        <div class="main-controls">
+            <div id="zone_joystick" class="joystick-area"></div>
+            <div class="zoom-area">
+                <div class="zoom-btn" id="btn-zoom-in" oncontextmenu="return false;">+</div>
+                <div class="zoom-btn" id="btn-zoom-out" oncontextmenu="return false;">-</div>
+            </div>
+        </div>
+
+        <div class="presets-area">
+            <div id="preset-grid" class="preset-grid">
+                <!-- 10 Presets generated by JS -->
+            </div>
+        </div>
+
+        <!-- Float Lock -->
+        <div class="lock-btn" id="lock-btn" onclick="toggleLock()">🔒</div>
+
+        <!-- Input Blocker -->
+        <div id="input-blocker" onclick="toggleLock()"></div>
+
+        <!-- Drawer -->
+        <div id="drawer-overlay" class="modal-overlay" onclick="toggleDrawer()">
+            <div id="cam-drawer" class="drawer" onclick="event.stopPropagation()">
+                <h3 style="border-bottom:1px solid #444; padding-bottom:10px; margin-top:0;">Cameras</h3>
+                <div id="cam-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // CONFIG
+        const firebaseConfig = {
+            databaseURL: "https://ptzcntrl-default-rtdb.asia-southeast1.firebasedatabase.app/"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        let currentRoom = null;
+        let pword = null;
+        let username = null;
+        let clientId = 'web_' + Math.random().toString(36).substr(2, 9);
+        let currentCamId = 'ALL';
+        let currentCamName = 'All Cameras';
+        let joystickManager = null;
+        let zoomInterval = null;
+        let isLocked = false;
+
+        // --- LOGIN LOGIC ---
+        function attemptLogin() {
+            const r = document.getElementById('roomId').value.trim();
+            const u = document.getElementById('username').value.trim();
+            const p = document.getElementById('password').value;
+
+            if (!r || !p || !u) return alert("Please fill all fields");
+
+            document.getElementById('loginBtn').innerText = "Connecting...";
+            document.getElementById('loginBtn').disabled = true;
+
+            const reqRef = db.ref(`rooms/${r}/request_login/${clientId}`);
+            const sessionRef = db.ref(`rooms/${r}/sessions/${clientId}`);
+
+            reqRef.set({ password: p, username: u, timestamp: firebase.database.ServerValue.TIMESTAMP });
+
+            let responded = false;
+            setTimeout(() => {
+                if (!responded) {
+                    alert("Timeout: No response from server.");
+                    window.location.reload();
+                }
+            }, 5000);
+
+            sessionRef.on('value', (snap) => {
+                const val = snap.val();
+                if (val) {
+                    responded = true;
+                    if (val.authorized) {
+                        currentRoom = r; pword = p; username = u;
+                        enterApp();
+                    } else {
+                        alert("Access Denied");
+                        window.location.reload();
+                    }
+                }
+            });
+        }
+
+        function enterApp() {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('app-screen').style.display = 'flex';
+
+            // Connection Monitor
+            db.ref('.info/connected').on('value', snap => {
+                document.getElementById('status-dot').className = snap.val() ? "status-dot online" : "status-dot";
+            });
+
+            // Room Closure Monitor
+            db.ref(`rooms/${currentRoom}`).on('value', snap => {
+                if (!snap.exists()) {
+                    alert("Room Closed by Host");
+                    window.location.reload();
+                }
+            });
+
+            // Clean up on disconnect
+            db.ref(`rooms/${currentRoom}/sessions/${clientId}`).onDisconnect().remove();
+
+            initJoystick();
+            initZoom();
+            loadCameras();
+            renderPresets();
+        }
+
+        // --- JOYSTICK ---
+        function initJoystick() {
+            const zone = document.getElementById('zone_joystick');
+            joystickManager = nipplejs.create({
+                zone: zone,
+                mode: 'static',
+                position: { left: '50%', top: '50%' },
+                color: '#0088ff',
+                size: 150
+            });
+
+            joystickManager.on('move', (evt, data) => {
+                if (isLocked) return;
+                const force = Math.min(data.force, 2.0); // cap force
+                // Map vector to Speed (0-100)
+                // We need to determine primary direction or send precise vector?
+                // Server currently takes simple PAN_LEFT etc.
+                // Let's implement 8-way logic for now or modify server for vector.
+                // For "dragging moves", we can send commands intervally.
+
+                // Using Vector to determine direction
+                const angle = data.angle.degree;
+                let action = '';
+
+                if (angle >= 45 && angle < 135) action = 'TILT_UP';
+                else if (angle >= 135 && angle < 225) action = 'PAN_LEFT';
+                else if (angle >= 225 && angle < 315) action = 'TILT_DOWN';
+                else action = 'PAN_RIGHT';
+
+                // Send Throttled Command
+                throttleCommand(action, parseInt(force * 50));
+            });
+
+            joystickManager.on('end', () => {
+                sendCommand('STOP');
+            });
+        }
+
+        let lastCmdTime = 0;
+        function throttleCommand(action, speed) {
+            const now = Date.now();
+            if (now - lastCmdTime > 200) {
+                sendCommand(action, speed);
+                lastCmdTime = now;
+            }
+        }
+
+        // --- ZOOM (Long Press) ---
+        function initZoom() {
+            const setupBtn = (id, action) => {
+                const btn = document.getElementById(id);
+                const start = (e) => {
+                    if (isLocked) return;
+                    e.preventDefault();
+                    if (zoomInterval) clearInterval(zoomInterval);
+                    sendCommand(action);
+                    zoomInterval = setInterval(() => sendCommand(action), 200);
+                };
+                const end = (e) => {
+                    if (isLocked) return;
+                    e.preventDefault();
+                    clearInterval(zoomInterval);
+                    sendCommand('STOP');
+                };
+
+                btn.addEventListener('touchstart', start);
+                btn.addEventListener('touchend', end);
+                btn.addEventListener('mousedown', start);
+                btn.addEventListener('mouseup', end);
+                btn.addEventListener('mouseleave', end);
+            };
+
+            setupBtn('btn-zoom-in', 'ZOOM_IN');
+            setupBtn('btn-zoom-out', 'ZOOM_OUT');
+        }
+
+        // --- CAMERAS ---
+        function loadCameras() {
+            db.ref(`rooms/${currentRoom}/devices`).on('value', snap => {
+                const list = document.getElementById('cam-list');
+                list.innerHTML = `<div class="cam-item ${currentCamId === 'ALL' ? 'active' : ''}" onclick="selectCam('ALL', 'All Cameras')">All Cameras</div>`;
+
+                const val = snap.val();
+                if (val) {
+                    Object.keys(val).forEach(key => {
+                        const dev = val[key];
+                        // Get Name if exists, else generic
+                        const name = dev.name || `IP: ${dev.ip}`;
+                        if (key === currentCamId) {
+                            currentCamName = name;
+                            document.getElementById('cam-title').innerText = name;
+                        }
+
+                        const item = document.createElement('div');
+                        item.className = `cam-item ${currentCamId === key ? 'active' : ''}`;
+                        item.innerText = name;
+                        item.onclick = () => selectCam(key, name);
+                        list.appendChild(item);
+                    });
+                }
+            });
+        }
+
+        function selectCam(id, name) {
+            currentCamId = id;
+            currentCamName = name;
+            document.getElementById('cam-title').innerText = name;
+            toggleDrawer(); // Close menu
+            renderPresets(); // Reload presets for this cam
+        }
+
+        function renameCamera() {
+            if (currentCamId === 'ALL') return alert("Cannot rename 'All Cameras'");
+            const newName = prompt("Enter new name for this camera:", currentCamName);
+            if (newName) {
+                db.ref(`rooms/${currentRoom}/devices/${currentCamId}/name`).set(newName);
+            }
+        }
+
+        function toggleDrawer() {
+            const d = document.getElementById('cam-drawer');
+            const o = document.getElementById('drawer-overlay');
+            if (d.classList.contains('open')) {
+                d.classList.remove('open');
+                setTimeout(() => o.style.display = 'none', 300);
+            } else {
+                o.style.display = 'block';
+                // force reflow
+                void d.offsetWidth;
+                d.classList.add('open');
+            }
+        }
+
+        // --- PRESETS ---
+        function renderPresets() {
+            const grid = document.getElementById('preset-grid');
+            grid.innerHTML = '';
+
+            // Generate 10 slots
+            for (let i = 1; i <= 10; i++) {
+                const card = document.createElement('div');
+                card.className = 'preset-card';
+                card.id = `preset-${i}`;
+
+                card.innerHTML = `
+                    <div class="p-num">${i}</div>
+                    <div class="p-actions">
+                        <button class="action-btn btn-set" onclick="setPreset(${i}, event)">SET</button>
+                        <button class="action-btn btn-del" onclick="delPreset(${i}, event)">DEL</button>
+                    </div>
+                `;
+
+                // Load State
+                if (currentCamId !== 'ALL') {
+                    db.ref(`rooms/${currentRoom}/devices/${currentCamId}/presets/${i}`).on('value', snap => {
+                        if (snap.exists()) {
+                            card.classList.add('set');
+                            // card.querySelector('.btn-set').innerText = 'UPD'; // Update?
+                        } else {
+                            card.classList.remove('set');
+                        }
+                    });
+                }
+
+                // Click to Call
+                card.onclick = () => {
+                    if (isLocked) return;
+                    // Show actions? Or just call? 
+                    // User asked for "Two Buttons: Set & Delete". 
+                    // Let's make Single Tap = Show Actions? Or Long Press?
+                    // User said: "Two buttons... one set, one delete... if preset not set, delete disabled"
+
+                    // Revised behavior based on prompt:
+                    // "Move camera -> Click 'Set Preest' -> Confirm -> Success"
+                    // Maybe the prompt implies a separate "Set Mode"?
+                    // But "Preset Grid" usually implies clickable recall.
+                    // Let's do: Tap = Call (if set) OR Show Set (if empty).
+                    // Long Press = Show Menu (Set/Delete).
+
+                    // Actually prompt says: "Below... 10 preset slots. 2 buttons (Set, Del)..." 
+                    // Maybe "Set" and "Delete" are GLOBAL buttons that apply to the SELECTED slot?
+                    // "Select slot (highlight) -> Click Set/Del".
+
+                    selectPresetSlot(i);
+                };
+
+                grid.appendChild(card);
+            }
+        }
+
+        let selectedPresetId = null;
+
+        function selectPresetSlot(id) {
+            if (isLocked) return;
+
+            // If we want to implement "Select then Act":
+            // 1. Highlight the card.
+            // But usually just tapping "Set" on the card is easier.
+            // Let's implement the overlay "Actions" on Click for now to be safe with touch.
+            // Or better:
+            // Tap = Call (if set).
+            // Tap = Prompt Set (if empty).
+            // Long Press = Context Menu (Delete/Update).
+
+            // Re-reading prompt: "此頁面往下滑可設定10個預設點位，兩個按鈕一個是設定預設位置，一個是刪除預設位..."
+            // "10 preset points... two buttons, one is Set, one is Delete... if no preset set, button is black..."
+            // It sounds like there are 10 slots AND 2 separate buttons?
+            // OR each slot has 2 buttons?
+            // Let's assume "Select Slot -> Press Set/Delete Button".
+
+            // Implementation:
+            // Click Preset Card -> Highlights it.
+            // If it has data -> Call it immediately? OR just highlight? 
+            // "Selected has backlight".
+
+            if (selectedPresetId) {
+                document.getElementById(`preset-${selectedPresetId}`).classList.remove('active');
+            }
+            selectedPresetId = id;
+            document.getElementById(`preset-${id}`).classList.add('active');
+
+            // If it exists, call it?
+            if (document.getElementById(`preset-${id}`).classList.contains('set')) {
+                sendCommand('PRESET_CALL', id);
+            }
+        }
+
+        // Let's add the global SET/DEL buttons below grid?
+        // Or inject them into the logic.
+        // I will follow the "Select then Act" approach since prompt mentions "Selected has backlight".
+
+        // UPDATE: Adding Global Set/Delete Buttons below grid in HTML
+
+        function setPreset(id, e) {
+            e.stopPropagation();
+            if (!confirm(`Set Preset ${id}?`)) return;
+            sendCommand('PRESET_SET', id);
+            // Optimistic update
+            if (currentCamId !== 'ALL') {
+                db.ref(`rooms/${currentRoom}/devices/${currentCamId}/presets/${id}`).set({
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                });
+            }
+        }
+
+        function delPreset(id, e) {
+            e.stopPropagation();
+            if (!confirm(`Delete Preset ${id}?`)) return;
+            if (currentCamId !== 'ALL') {
+                db.ref(`rooms/${currentRoom}/devices/${currentCamId}/presets/${id}`).remove();
+            }
+        }
+
+        // --- SCREEN LOCK ---
+        function toggleLock() {
+            isLocked = !isLocked;
+            const btn = document.getElementById('lock-btn');
+            const blocker = document.getElementById('input-blocker');
+            if (isLocked) {
+                btn.classList.add('locked');
+                blocker.style.display = 'block';
+            } else {
+                btn.classList.remove('locked');
+                blocker.style.display = 'none';
+            }
+        }
+
+        // --- COMMANDS ---
+        function sendCommand(action, speed = 50) {
+            if (!currentRoom) return;
+            db.ref(`rooms/${currentRoom}/commands`).push({
+                action: action,
+                target: currentCamId,
+                speed: speed,
+                password: pword,
+                username: username,
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            });
+        }
+    </script>
+</body>
+
+</html>

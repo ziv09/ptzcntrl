@@ -1,0 +1,56 @@
+# 安全遠端 PTZ 攝影機控制系統 (Secure Remote PTZ Control System)
+
+## 專案概述
+本系統允許您透過安全的 Firebase 中繼，遠端控制 Local 端的 Panasonic PTZ 攝影機。
+- **本地客戶端 (Windows Exe):** 運行於與攝影機同一網路的 PC 上，負責接收指令並控制攝影機。
+- **遠端網頁 (Web App):** 託管於 Firebase Hosting，供使用者透過手機或電腦遠端操作。
+
+## 1. 設定與安裝
+
+### 前置需求
+- 開發電腦需安裝 **Node.js**。
+- 需安裝 Firebase CLI 工具 (`npm install -g firebase-tools`)。
+
+### 安裝依賴套件
+請在專案根目錄 (即 `d:\ptzcntrl`) 執行以下指令：
+```bash
+npm install
+```
+
+## 2. 部署遠端網頁 (Remote Web App)
+將遠端控制介面發布到網路上：
+
+1. 登入 Firebase (若尚未登入):
+   ```bash
+   firebase login
+   ```
+2. 部署 Hosting 與安全性規則:
+   ```bash
+   firebase deploy
+   ```
+   *此指令會上傳 `hosting/public` 資料夾並套用 `firebase/database.rules.json` 安全規則。*
+
+部署完成後，您的網頁網址將會是：`https://ptzcntrl.web.app`
+
+## 3. 打包 Windows 客戶端 (Exe)
+若要產生可獨立執行的 `.exe` 檔案：
+
+```bash
+npm run dist
+```
+打包完成後的 `.exe` 檔案將位於 `dist/` 資料夾中。
+
+## 4. 使用說明
+
+### 步驟 A: 本地端 PC (Client)
+1. 執行打包好的 `.exe` 檔案 (或在開發模式下執行 `npm start`)。
+2. 系統會顯示一個 Dashboard 小視窗。點擊 **"Open Settings (Web)"** 按鈕。
+3. 瀏覽器會自動開啟設定頁面 (`localhost:5000`)。
+4. 輸入自訂的 **房間號碼 (Room ID)** (例如 `OFFICE-01`) 與 **安全密碼 (Secret Password)**。
+5. 點擊 **Start Server**。Dashboard 應顯示 "Connected" (已連線)。
+6. 您現在可以點擊 **"Hide to Tray"** 將程式縮小至右下角系統列，讓它在背景執行。
+
+### 步驟 B: 遠端使用者 (Remote User)
+1. 開啟遠端網頁 (`https://ptzcntrl.web.app`)。
+2. 輸入與本地端完全相同的 **房間號碼** 與 **密碼**。
+3. 成功登入後，您將看到控制介面。選擇攝影機並使用方向鍵進行控制。

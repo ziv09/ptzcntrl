@@ -1,0 +1,15 @@
+{
+    "rules": {
+        "rooms": {
+            ".read": true,
+            "$roomId": {
+                ".write": true,
+                "commands": {
+                    ".indexOn": [
+                        "timestamp"
+                    ]
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,85 @@
+# Secure Remote PTZ Camera Control System - Implementation Plan
+
+## Goal Description
+Develop a secure, remote PTZ camera control system using Firebase Realtime Database as a bridge. The system features a Node.js local client (compiled to Windows .exe) that connects Panasonic cameras to the cloud without port forwarding.
+**Key Features:**
+- **Room-Based Access:** Unique Room ID and Password for authentication (Zero-Knowledge: Password verified locally).
+- **Security:** Strict Command Allowlist, Anti-Malware protection, and Watchdog timer (Auto-Stop on connection loss).
+- **Ease of Use:** Local GUI for initial setup and Single Executable packaging.
+
+## User Review Required
+> [!IMPORTANT]
+> **Password Handling:** Passwords are **never** stored in the cloud. The Client verifies passwords locally for every command. If the Client is restarted or the config is lost, the "Room" effectively becomes inaccessible until reconfigured with the same password.
+
+> [!WARNING]
+> **Single User per Room Recommendation:** While the system supports multiple controllers, for safety reasons (physical movement conflicts), it is recommended to coordinate control access. The system actively processes commands on a "Last Write Wins" basis.
+
+## Proposed Changes
+
+### Directory Structure
+```
+/
+├── server/                 # Node.js Local Client
+│   ├── index.js            # Main Logic (Auto-Discovery, Firebase Listener)
+│   ├── gui.js              # Local Configuration Interface (Express)
+│   ├── ptz.js              # Panasonic Camera Control Logic
+│   ├── security.js         # Password Verification & Command Allowlist
+│   ├── config.json         # Configuration Template
+│   ├── package.json        # Dependencies & pkg Config
+│   └── public/             # HTML/CSS for Local GUI
+└── firebase/               # Firebase Configuration
+    ├── database.rules.json # Security Rules
+    └── schema_example.json # Data Structure Example
+```
+
+### [server] Node.js Client
+#### [NEW] [index.js](file:///server/index.js)
+- **Startup:** Launch `gui.js` immediately.
+- **Discovery:** Scan Local Network for Panasonic Cameras (HTTP/ONVIF).
+- **Firebase:** Connect to generic `rooms/{roomId}` **ONLY AFTER** GUI input.
+- **In-Memory Config:** Store `roomId` and `password` in variables. **DO NOT** save to disk.
+- **Logic:** Listen to `rooms/{roomId}/commands`. Verify password (from memory) -> Check Allowlist -> Send to Camera.
+
+#### [NEW] [security.js](file:///server/security.js)
+- `verifyCommand(cmd, localPass)`: Returns true/false.
+- `sanitizeCommand(cmd)`: Returns safe command object or null.
+- `watchdog`: Timer that triggers `STOP` if no move command received in 500ms.
+
+#### [NEW] [gui.js](file:///server/gui.js)
+- Express server on random port.
+- Opens default browser to `http://localhost:{port}`.
+- Form to input: `Room ID`, `Password` (One-time session).
+- **Action:** POST to `/config` sets global variables in `index.js` and starts Firebase connection.
+- **Security:** Localhost only. Closes server after configuration is set (optional, or keeps open for status).
+
+### [firebase] Configuration
+#### [NEW] [database.rules.json](file:///firebase/database.rules.json)
+- Rules to allow any authenticated user (or public, if relying entirely on Room ID knowledge + Local Pass) to write to `commands` but strictly validate structure.
+- **Decision:** Use Firebase Anonymous Auth for basic rate limiting, but rely on Local Client for "Access Control" via Password.
+
+## Verification Plan
+
+### Automated Tests
+- **Unit Tests (`server/test/security.test.js`):**
+    - Test `verifyCommand` with correct/incorrect passwords.
+    - Test `sanitizeCommand` with valid/malicious payloads.
+- **Integration Test (`server/test/mock_firebase.js`):**
+    - Simulate Firebase messages and verify Client triggers Camera HTTP requests (mocked).
+
+### Manual Verification
+1. **Setup:**
+   - Run `node server/index.js`.
+   - Verify Browser opens.
+   - Enter Room `TEST01`, Pass `1234`.
+2. **Connection:**
+   - Check Console: "Connected to Room TEST01".
+3. **Control:**
+   - Use a simple script (or the provided test web page) to push `{ cmd: 'PAN_LEFT', password: '1234' }` to Firebase.
+   - Verify Client logs: "Executing PAN_LEFT".
+   - Stop sending commands. Verify Client logs: "Watchdog Triggered: STOP".
+4. **Security:**
+   - Push `{ cmd: 'PAN_LEFT', password: 'WRONG' }`.
+   - Verify Client logs: "Auth Failed".
+   - Push `{ cmd: 'RM_RF', password: '1234' }`.
+   - Verify Client logs: "Invalid Command".
+

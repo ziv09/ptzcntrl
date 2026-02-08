@@ -1,0 +1,6 @@
+{
+  "artifactType": "ARTIFACT_TYPE_IMPLEMENTATION_PLAN",
+  "summary": "Usage Guide (README) in Traditional Chinese.\nExplains how to:\n1. Run the Electron Client (Dev Mode or Build).\n2. Deploy the Web App to Firebase Hosting.\n3. Use the System (Room Setup / Remote Control).",
+  "updatedAt": "2026-02-08T07:08:03.224837Z",
+  "version": "1"
+}

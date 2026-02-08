@@ -1,0 +1,5 @@
+{
+  "artifactType": "ARTIFACT_TYPE_TASK",
+  "summary": "Tasks for building the Secure Remote PTZ Camera Control System. Includes Firebase setup, Node.js client with GUI and security features, and packaging.",
+  "updatedAt": "2026-02-08T06:39:04.533826300Z"
+}
