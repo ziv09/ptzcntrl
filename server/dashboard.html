@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PTZ 控制台</title>
+    <title>PTZcntrl</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -20,14 +20,23 @@
             user-select: none;
         }
 
+        /* Logo */
+        .dashboard-logo {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 80px;
+            height: auto;
+        }
+
         /* Large Status Light - Resized Smaller */
         .status-light {
-            width: 60px;
-            height: 60px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             background: #222;
             box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             transition: all 0.5s ease;
             position: relative;
         }
@@ -129,6 +138,7 @@
 
 <body>
 
+    <img src="icon_w.png" class="dashboard-logo" alt="PTZcntrl Logo">
     <div id="light" class="status-light"></div>
     <div id="status-label" class="status-text">DISCONNECTED</div>
 
@@ -149,6 +159,19 @@
         </div>
     </div>
 
+    <!-- Web App Link & QR Code -->
+    <div
+        style="margin: 20px auto; text-align: center; padding: 12px; max-width: 200px; background: rgba(255,255,255,0.03); border-radius: 10px; border: 1px dashed #333;">
+        <div style="font-size: 10px; color: #666; margin-bottom: 5px;">Client 端</div>
+        <a href="#" id="webapp-link" style="color: #0088ff; text-decoration: none; font-size: 11px; cursor: pointer;">
+            ptzcntrl.web.app
+        </a>
+        <div style="margin-top: 8px;">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=70x70&data=https://ptzcntrl.web.app"
+                alt="QR Code" style="border-radius: 4px;">
+        </div>
+    </div>
+
     <div class="controls">
         <button id="btn-gui">Launch GUI</button>
         <button id="btn-hide">Hide</button>
@@ -156,7 +179,13 @@
     </div>
 
     <script>
-        const { ipcRenderer } = require('electron');
+        const { ipcRenderer, shell } = require('electron');
+
+        // Open web app link in system browser
+        document.getElementById('webapp-link').addEventListener('click', (e) => {
+            e.preventDefault();
+            shell.openExternal('https://ptzcntrl.web.app');
+        });
 
         ipcRenderer.on('status-update', (event, data) => {
             // Update Text Info

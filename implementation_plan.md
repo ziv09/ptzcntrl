@@ -65,6 +65,18 @@ Develop a secure, remote PTZ camera control system using Firebase Realtime Datab
 - Rules to allow any authenticated user (or public, if relying entirely on Room ID knowledge + Local Pass) to write to `commands` but strictly validate structure.
 - **Decision:** Use Firebase Anonymous Auth for basic rate limiting, but rely on Local Client for "Access Control" via Password.
 
+### [UI] Interface Refinements
+#### [MODIFY] [server/public/index.html](file:///server/public/index.html)
+- **Grid Layout:** 2-column dashboard design for better large-screen usability.
+- **Debug Console:** Collapsible bottom panel for real-time logs.
+
+#### [MODIFY] [hosting/public/index.html](file:///hosting/public/index.html)
+- **Mobile Opt-in:**
+    - **Layout:** Responsive Joystick (`50vmin`) to prevent overflow on small screens.
+    - **Scroll Lock:** Global `touchmove` prevention (Always On) to ensure "App-like" feel.
+    - **Logout:** Added to Drawer menu.
+    - **Logout:** Added to Drawer menu.
+
 ## Verification Plan
 
 ### Automated Tests

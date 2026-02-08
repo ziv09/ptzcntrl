@@ -1,9 +1,30 @@
-const axios = require('axios');
-const http = require('http');
+/**
+ * PTZ Command Router
+ * Routes commands to appropriate protocol handler
+ */
+
+// Protocol Modules
+const panasonic = require('./protocols/panasonic');
+const onvif = require('./protocols/onvif');
+const visca = require('./protocols/visca');
+const ndi = require('./protocols/ndi');
+
+// Protocol map
+const protocols = {
+    panasonic,
+    onvif,
+    visca,
+    ndi
+};
 
 // Global Watchdog Timer
 let watchdogTimer = null;
 
+/**
+ * Send PTZ command to device(s)
+ * @param {Object} cmd - Command object { action, target, speed }
+ * @param {Object} devices - Device registry
+ */
 async function sendPtzCommand(cmd, devices) {
     // 1. Reset Watchdog for MOVE commands
     if (cmd.action.startsWith('PAN') || cmd.action.startsWith('TILT') || cmd.action.startsWith('ZOOM')) {
@@ -15,67 +36,94 @@ async function sendPtzCommand(cmd, devices) {
     if (cmd.target === 'ALL' || !cmd.target) {
         Object.values(devices).forEach(d => targets.push(d));
     } else {
-        const dev = devices[cmd.target]; // Target by MAC or ID
+        const dev = devices[cmd.target];
         if (dev) targets.push(dev);
     }
 
-    // 3. Convert Action to Panasonic CGI
-    const cgiParams = mapCommandToCgi(cmd.action, cmd.speed || 50);
-
-    // 4. Send HTTP Requests
+    // 3. Send commands to each target
     const promises = targets.map(device => {
-        const url = `http://${device.ip}/cgi-bin/aw_ptz?cmd=%23${cgiParams}&res=1`;
-        console.log(`Sending to ${device.ip}: ${url}`);
-        return axios.get(url, { timeout: 2000 }).catch(e => console.error(`Error sending to ${device.ip}:`, e.message));
+        const protocol = device.protocol || 'panasonic'; // Default to panasonic
+        const handler = protocols[protocol];
+
+        if (!handler) {
+            console.error(`[PTZ] Unknown protocol: ${protocol}`);
+            return Promise.resolve({ success: false, error: 'Unknown protocol' });
+        }
+
+        return handler.sendCommand(device, cmd.action, cmd.speed || 50);
     });
 
     await Promise.all(promises);
 }
 
+/**
+ * Reset watchdog timer - stops cameras if no commands received
+ */
 function resetWatchdog(devices) {
     if (watchdogTimer) clearTimeout(watchdogTimer);
     watchdogTimer = setTimeout(() => {
         console.log("Watchdog Triggered: Stopping All Cameras");
         stopAllCameras(devices);
-    }, 600); // Slightly more than 500ms to allow network jitter
+    }, 600);
 }
 
+/**
+ * Stop all cameras using appropriate protocol
+ */
 async function stopAllCameras(devices) {
-    // Panasonic STOP command usually is Pan/Tilt Stop or Preset Stop
-    // Often sending P50T50 (Center speed 50 = Stop) works, or specific stop command depending on model.
-    // Standard PTZ Stop: %23PTS50 or similar.
-    // Let's use Pan/Tilt Stop: #P50T50 (Speed 50 is stop for Panasonic)
-
     const targets = Object.values(devices);
+
     const promises = targets.map(device => {
-        // Panasonic: P50 T50 is neutral (stop)
-        const url = `http://${device.ip}/cgi-bin/aw_ptz?cmd=%23P50T50&res=1`;
-        // Also stop Zoom if needed per model, but usually separate. 
-        // Let's assume P/T is main concern.
-        return axios.get(url, { timeout: 1000 }).catch(e => { });
+        const protocol = device.protocol || 'panasonic';
+        const handler = protocols[protocol];
+
+        if (handler) {
+            return handler.stop(device);
+        }
+        return Promise.resolve();
     });
+
     await Promise.all(promises);
 }
 
-function mapCommandToCgi(action, speed) {
-    // Simplify Speed (0-100), Panasonic usually 01-99
-    // Center is 50.
-    // Pan Left: < 50, Pan Right: > 50
+/**
+ * Discover all devices across all protocols
+ * @returns {Promise<Array>} Array of discovered devices
+ */
+async function discoverAll() {
+    console.log('[PTZ] Starting multi-protocol discovery...');
 
-    // Simple Mapping for prototype
-    switch (action) {
-        case 'PAN_LEFT': return 'P01';
-        case 'PAN_RIGHT': return 'P99';
-        case 'TILT_UP': return 'T99';
-        case 'TILT_DOWN': return 'T01';
-        case 'ZOOM_IN': return 'Z99';
-        case 'ZOOM_OUT': return 'Z01';
-        case 'STOP': return 'P50T50Z50';
-        // Presets: #Rxx (Recall), #Mxx (Memory/Set)
-        case 'PRESET_CALL': return `R${String(speed).padStart(2, '0')}`;
-        case 'PRESET_SET': return `M${String(speed).padStart(2, '0')}`;
-        default: return 'P50T50';
-    }
+    const results = await Promise.allSettled([
+        panasonic.discover(),
+        onvif.discover(),
+        visca.discover(),
+        ndi.discover()
+    ]);
+
+    const allDevices = [];
+
+    results.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
+            allDevices.push(...result.value);
+        } else {
+            console.error(`[PTZ] Discovery error for protocol ${index}:`, result.reason);
+        }
+    });
+
+    console.log(`[PTZ] Total discovered: ${allDevices.length} devices`);
+    return allDevices;
 }
 
-module.exports = { sendPtzCommand };
+/**
+ * Get supported protocols
+ */
+function getSupportedProtocols() {
+    return Object.keys(protocols);
+}
+
+module.exports = {
+    sendPtzCommand,
+    discoverAll,
+    getSupportedProtocols,
+    stopAllCameras
+};

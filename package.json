@@ -1,7 +1,7 @@
 {
-  "name": "secure-ptz-control",
+  "name": "ptzcntrl",
   "version": "1.0.0",
-  "description": "Secure Remote PTZ Camera Control System (Electron)",
+  "description": "PTZcntrl - Secure Remote PTZ Camera Control System",
   "main": "server/main.js",
   "scripts": {
     "start": "electron .",
@@ -23,10 +23,10 @@
     "electron-builder": "^24.13.3"
   },
   "build": {
-    "appId": "com.ptz.control",
+    "appId": "com.ptzcntrl.app",
     "win": {
       "target": "nsis",
-      "icon": "build/icon.ico"
+      "icon": "build/icon.png"
     },
     "directories": {
       "output": "dist"

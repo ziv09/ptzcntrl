@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PTZ 伺服器設定</title>
+    <title>PTZcntrl 伺服器設定</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -18,36 +18,95 @@
 
         .container {
             width: 100%;
-            max-width: 500px;
+            max-width: 900px;
+            /* Wider for Grid */
         }
 
-        h2,
-        h3 {
+        /* Header Elements */
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             border-bottom: 1px solid #333;
-            padding-bottom: 10px;
+            padding-bottom: 15px;
             margin-bottom: 20px;
-            font-weight: normal;
         }
 
+        h2 {
+            margin: 0;
+            font-weight: normal;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo {
+            height: 60px;
+            width: auto;
+        }
+
+        .status-badge {
+            padding: 5px 15px;
+            border-radius: 20px;
+            background: #111;
+            border: 1px solid #333;
+            color: #888;
+            font-size: 14px;
+        }
+
+        .status-badge.online {
+            color: #4caf50;
+            border-color: #4caf50;
+        }
+
+        /* Grid System */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: #0a0a0a;
+            border: 1px solid #222;
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        h3 {
+            margin-top: 0;
+            border-bottom: 1px dashed #333;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            font-size: 16px;
+            color: #ccc;
+        }
+
+        /* Forms */
         .form-group {
             margin-bottom: 20px;
         }
 
         label {
             display: block;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
             color: #888;
             font-size: 14px;
         }
 
         input {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             background: #111;
             border: 1px solid #333;
             color: #fff;
-            border-radius: 8px;
-            /* Slightly rounded inputs */
+            border-radius: 6px;
             box-sizing: border-box;
             font-size: 16px;
         }
@@ -63,38 +122,24 @@
             background: #222;
             color: #fff;
             border: 1px solid #444;
-            border-radius: 50px;
-            /* Fully Rounded Buttons */
+            border-radius: 6px;
             cursor: pointer;
             font-size: 16px;
-            transition: background 0.2s;
+            transition: 0.2s;
         }
 
         button:hover {
             background: #333;
         }
 
-        .status {
-            padding: 10px;
-            margin-bottom: 20px;
-            border-radius: 4px;
-            text-align: center;
-            background: #111;
-            border: 1px solid #333;
-            color: #888;
-        }
-
-        .status.online {
-            color: #4caf50;
-            border-color: #4caf50;
-        }
-
         /* Lists */
         .list-container {
-            background: #111;
-            border: 1px solid #333;
-            border-radius: 4px;
-            padding: 10px;
+            background: #0f0f0f;
+            /* Slightly lighter inner bg */
+            border: 1px solid #222;
+            border-radius: 6px;
+            max-height: 250px;
+            overflow-y: auto;
         }
 
         .list-item {
@@ -121,11 +166,12 @@
         .inline-form {
             display: flex;
             gap: 10px;
+            margin-bottom: 15px;
         }
 
-        /* Console Styles */
+        /* Console */
         .console-container {
-            margin-top: 30px;
+            margin-top: 20px;
             border: 1px solid #333;
             border-radius: 8px;
             overflow: hidden;
@@ -133,7 +179,7 @@
         }
 
         .console-header {
-            background: #222;
+            background: #111;
             padding: 10px;
             cursor: pointer;
             display: flex;
@@ -144,7 +190,7 @@
         }
 
         .console-header:hover {
-            background: #333;
+            background: #222;
         }
 
         .console-body {
@@ -152,12 +198,10 @@
             overflow-y: auto;
             padding: 10px;
             display: none;
-            /* Hidden by default */
-            font-family: "Consolas", "Monaco", monospace;
+            font-family: "Consolas", monospace;
             font-size: 12px;
             line-height: 1.4;
             color: #0f0;
-            /* Fluorescent Green */
         }
 
         .console-body.open {
@@ -165,7 +209,7 @@
         }
 
         .log-time {
-            color: #888;
+            color: #555;
             margin-right: 10px;
         }
 
@@ -186,31 +230,49 @@
 
 <body>
     <div class="container">
-        <h2>PTZ 伺服器設定</h2>
-        <div class="status" id="status">狀態: 連線中...</div>
-
-        <div class="form-group">
-            <label>房間代碼 (Room ID)</label>
-            <input type="text" id="roomId" placeholder="輸入房間代碼">
-        </div>
-        <div class="form-group">
-            <label>管理密碼 (Password)</label>
-            <input type="password" id="password" placeholder="輸入連線密碼">
-        </div>
-        <button id="btn-toggle" onclick="toggleServer()">啟動伺服器</button>
-
-        <h3 style="margin-top: 40px;">PTZ 裝置清單</h3>
-        <div class="form-group inline-form">
-            <input type="text" id="manualIp" placeholder="手動輸入 IP (例: 192.168.1.10)">
-            <button style="width: auto;" onclick="addIp()">新增</button>
-        </div>
-        <div id="device-list" class="list-container">
-            <div style="text-align:center; color:#666; padding:10px;">無裝置</div>
+        <!-- Header -->
+        <div class="header-row">
+            <h2><img src="icon_w.png" class="logo" alt="Logo">PTZcntrl 伺服器控制台</h2>
+            <div id="status" class="status-badge">狀態: 連線中...</div>
         </div>
 
-        <h3 style="margin-top: 40px;">線上使用者</h3>
-        <div id="user-list" class="list-container">
-            <div style="text-align:center; color:#666; padding:10px;">無使用者</div>
+        <div class="main-grid">
+            <!-- Left Panel: Settings -->
+            <div class="panel">
+                <h3>伺服器設定 (Server Config)</h3>
+                <div class="form-group">
+                    <label>房間代碼 (Room ID)</label>
+                    <input type="text" id="roomId" placeholder="輸入房間代碼">
+                </div>
+                <div class="form-group">
+                    <label>管理密碼 (Password)</label>
+                    <input type="password" id="password" placeholder="輸入連線密碼">
+                </div>
+                <div style="margin-top: 30px;">
+                    <button id="btn-toggle" onclick="toggleServer()">啟動伺服器</button>
+                </div>
+            </div>
+
+            <!-- Right Panel: Management -->
+            <div class="panel">
+                <h3>裝置管理 (Services & Devices)</h3>
+
+                <label>新增裝置</label>
+                <div class="inline-form">
+                    <input type="text" id="manualIp" placeholder="IP 位址 (自動偵測協議)">
+                    <button style="width: 100px;" onclick="addIp()">自動偵測</button>
+                </div>
+
+                <label>已連線裝置</label>
+                <div id="device-list" class="list-container" style="margin-bottom: 20px;">
+                    <div style="text-align:center; color:#666; padding:10px;">無裝置</div>
+                </div>
+
+                <label>線上使用者</label>
+                <div id="user-list" class="list-container">
+                    <div style="text-align:center; color:#666; padding:10px;">無使用者</div>
+                </div>
+            </div>
         </div>
 
         <!-- Debug Console -->
@@ -278,15 +340,31 @@
         async function addIp() {
             const ip = document.getElementById('manualIp').value;
             if (!ip) return;
-            const res = await fetch('/api/manual-ip', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ip })
-            });
-            const data = await res.json();
-            if (data.success) {
-                document.getElementById('manualIp').value = '';
-                updateStatus();
+
+            // Show loading state
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerText = '偵測中...';
+
+            try {
+                const res = await fetch('/api/probe-ip', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ip })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('manualIp').value = '';
+                    alert(`成功! 偵測到: ${data.device.type} (${data.device.protocol})`);
+                    updateStatus();
+                } else {
+                    alert('偵測失敗: ' + (data.error || '未知錯誤'));
+                }
+            } catch (e) {
+                alert('連線錯誤: ' + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = '自動偵測';
             }
         }
 
@@ -297,10 +375,15 @@
 
                 isConnected = data.connected;
 
-                // Status Header
+                // Status Header. Logic slightly changed for badge style
                 const statusEl = document.getElementById('status');
-                statusEl.innerText = `狀態: ${data.connected ? '已連線' : '斷線'} | IP: ${data.ip}`;
-                statusEl.className = 'status ' + (data.connected ? 'online' : '');
+                if (data.connected) {
+                    statusEl.innerText = `● 系統運作中 | IP: ${data.ip}`;
+                    statusEl.classList.add('online');
+                } else {
+                    statusEl.innerText = `○ 系統已停止`;
+                    statusEl.classList.remove('online');
+                }
 
                 // Fill Inputs if empty
                 if (data.roomId) {
@@ -324,8 +407,6 @@
                     btn.style.color = "#fff";
                     roomInput.disabled = false;
                     passInput.disabled = false;
-                    // If just disconnected, maybe clear inputs? user requested "previous setting invalid"
-                    // But usually UX keeps them. Let's keep them but editable. 
                 }
 
                 // Render Devices
@@ -359,8 +440,6 @@
                 // Render Logs
                 if (data.logs && isConsoleOpen) {
                     const consoleBody = document.getElementById('console-body');
-                    // Check if new logs arrived? Primitive check is fine for now
-                    // Just clearing and re-rendering is easier for small array (50 items)
                     const html = data.logs.map(log =>
                         `<div><span class="log-time">[${log.time}]</span><span class="log-type-${log.type}">${log.msg}</span></div>`
                     ).join('');

@@ -7,12 +7,12 @@ const serviceAccount = require('./serviceAccountKey.json');
 const os = require('os');
 const ip = require('ip');
 const fs = require('fs');
-const { autoDiscovery } = require('./discovery');
-const { sendPtzCommand } = require('./ptz');
+const { autoDiscovery, addDevice, getDevices } = require('./discovery');
+const { sendPtzCommand, getSupportedProtocols } = require('./ptz');
 const { verifyCommand, sanitizeCommand } = require('./security');
 
 // --- Icon Handling ---
-const iconPath = path.join(__dirname, '../build/icon.png'); // Use PNG
+const iconPath = path.join(__dirname, '../build/icon.png'); // Use icon.png
 let appIcon = nativeImage.createEmpty();
 if (fs.existsSync(iconPath)) {
     try {
@@ -50,22 +50,133 @@ const serverApp = express();
 serverApp.use(bodyParser.json());
 serverApp.use(express.static(path.join(__dirname, 'public')));
 
-// New: Manual IP Addition
+// Manual Device Addition with Protocol Selection
 serverApp.post('/api/manual-ip', (req, res) => {
-    const { ip } = req.body;
+    const { ip, protocol, port, name, username, password } = req.body;
     if (ip) {
-        // Add to active devices map
-        devices[`manual_${Date.now()}`] = {
+        const device = addDevice({
             ip: ip,
-            type: 'manual',
-            status: 'unknown'
-        };
-        res.json({ success: true, devices });
+            protocol: protocol || 'panasonic',
+            port: port,
+            name: name || `Camera (${ip})`,
+            username: username,
+            password: password
+        });
+        devices = getDevices();
+        res.json({ success: true, device, devices });
         updateDashboard();
     } else {
         res.status(400).json({ error: "Missing IP" });
     }
 });
+
+// Get supported protocols
+serverApp.get('/api/protocols', (req, res) => {
+    res.json({ protocols: getSupportedProtocols() });
+});
+
+// Auto-probe IP to detect protocol
+serverApp.post('/api/probe-ip', async (req, res) => {
+    const { ip } = req.body;
+    if (!ip) {
+        return res.status(400).json({ error: "Missing IP" });
+    }
+
+    console.log(`[Probe] Auto-detecting protocol for ${ip}...`);
+
+    // Try each protocol in order of likelihood
+    const protocols = ['onvif', 'panasonic', 'visca', 'ndi'];
+    const axios = require('axios');
+    const onvif = require('node-onvif');
+
+    for (const protocol of protocols) {
+        try {
+            let detected = false;
+            let name = '';
+
+            switch (protocol) {
+                case 'onvif':
+                    // Try ONVIF connection
+                    const device = new onvif.OnvifDevice({
+                        xaddr: `http://${ip}/onvif/device_service`
+                    });
+                    await device.init();
+                    detected = true;
+                    name = device.getInformation()?.Manufacturer || 'ONVIF Camera';
+                    break;
+
+                case 'panasonic':
+                    // Try Panasonic CGI
+                    const panaRes = await axios.get(`http://${ip}/cgi-bin/aw_ptz?cmd=%23O&res=1`, { timeout: 2000 });
+                    if (panaRes.data) {
+                        detected = true;
+                        name = 'Panasonic PTZ';
+                    }
+                    break;
+
+                case 'visca':
+                    // VISCA detection is harder, assume if port 52381 responds
+                    const dgram = require('dgram');
+                    detected = await new Promise((resolve) => {
+                        const socket = dgram.createSocket('udp4');
+                        const buf = Buffer.from([0x81, 0x09, 0x00, 0x02, 0xFF]); // Inquiry
+                        socket.send(buf, 52381, ip);
+                        socket.on('message', () => { socket.close(); resolve(true); });
+                        setTimeout(() => { socket.close(); resolve(false); }, 1000);
+                    });
+                    if (detected) name = 'VISCA Camera';
+                    break;
+
+                case 'ndi':
+                    // Try NDI HTTP endpoint
+                    const ndiRes = await axios.get(`http://${ip}/`, { timeout: 2000 });
+                    if (ndiRes.data && ndiRes.data.toString().toLowerCase().includes('ndi')) {
+                        detected = true;
+                        name = 'NDI Camera';
+                    }
+                    break;
+            }
+
+            if (detected) {
+                console.log(`[Probe] Detected ${protocol} at ${ip}`);
+                const device = addDevice({
+                    ip: ip,
+                    protocol: protocol,
+                    name: name || `Camera (${ip})`
+                });
+                devices = getDevices();
+                updateDashboard();
+                return res.json({ success: true, device, protocol });
+            }
+        } catch (e) {
+            // Protocol not detected, try next
+            console.log(`[Probe] ${protocol} not detected at ${ip}: ${e.message}`);
+        }
+    }
+
+    // If no protocol detected, default to ONVIF (most common)
+    console.log(`[Probe] No protocol detected for ${ip}, defaulting to ONVIF`);
+    const device = addDevice({
+        ip: ip,
+        protocol: 'onvif',
+        name: `Camera (${ip})`
+    });
+    devices = getDevices();
+    updateDashboard();
+    res.json({ success: true, device, protocol: 'onvif', note: 'Auto-assigned (undetected)' });
+});
+
+// Background discovery (every 30 seconds)
+setInterval(async () => {
+    console.log('[Background] Running auto-discovery...');
+    try {
+        await autoDiscovery();
+        devices = getDevices();
+        updateDashboard();
+    } catch (e) {
+        console.error('[Background] Discovery error:', e.message);
+    }
+}, 30000);
 
 serverApp.post('/api/config', (req, res) => {
     const { room, pass } = req.body;

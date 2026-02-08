@@ -4,25 +4,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PTZ Remote</title>
+    <title>PTZcntrl Remote</title>
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <!-- Nipple.js for Joystick -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.1/nipplejs.min.js"></script>
     <style>
+        /* Global Reset for Mobile App Feel */
+        * {
+            box-sizing: border-box;
+            -webkit-user-select: none;
+            /* Chrome/Safari */
+            -moz-user-select: none;
+            /* Firefox */
+            -ms-user-select: none;
+            /* IE10+ */
+            user-select: none;
+            /* Standard */
+            -webkit-touch-callout: none;
+            /* iOS Safari */
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background: #000;
             color: #fff;
             margin: 0;
+            /* Fix iOS Safari 100vh bug */
             height: 100vh;
+            height: 100dvh;
+            /* Dynamic viewport height */
+            height: -webkit-fill-available;
+            width: 100vw;
             overflow: hidden;
-            user-select: none;
+            /* Strict no-scroll */
             touch-action: none;
-            /* Prevent browser zooming/scrolling */
+            /* Disable browser zooming/panning globally */
             display: flex;
             flex-direction: column;
+        }
+
+        html {
+            height: -webkit-fill-available;
+        }
+
+        /* Portrait Warning Overlay */
+        #portrait-warning {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 9999;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+        }
+
+        /* Only show portrait warning when app is active (logged in) */
+        @media (orientation: portrait) {
+            body.app-active #portrait-warning {
+                display: flex;
+            }
         }
 
         /* Login Screen */
@@ -50,7 +98,55 @@
             background: #111;
         }
 
+        .login-logo {
+            width: 150px;
+            height: auto;
+            margin-bottom: 20px;
+        }
+
+        /* Download Section */
+        .download-section {
+            margin-top: 30px;
+            padding: 20px;
+            border: 1px dashed #444;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.03);
+            width: 80%;
+            max-width: 300px;
+            text-align: center;
+        }
+
+        .download-section h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #888;
+        }
+
+        .download-section p {
+            font-size: 12px;
+            color: #666;
+            margin: 0 0 15px 0;
+            line-height: 1.5;
+        }
+
+        .download-btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #0088ff;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 20px;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+
+        .download-btn:hover {
+            background: #0066cc;
+        }
+
         input {
+            -webkit-user-select: text;
+            user-select: text;
             width: 100%;
             padding: 12px;
             margin: 10px 0;
@@ -136,12 +232,60 @@
             display: flex;
             position: relative;
             background: #050505;
+            overflow: hidden;
+            /* Prevent spill */
         }
 
         .joystick-area {
             flex: 2;
             position: relative;
             border-right: 1px solid #222;
+            touch-action: none;
+            background: #050505;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        /* The visual container for the joystick */
+        .joystick-scope {
+            /* Responsive Size: Fits smaller of width/height */
+            width: 50vmin;
+            height: 50vmin;
+            max-width: 240px;
+            max-height: 240px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #1a1a1a 0%, #000 100%);
+            border: 1px solid #333;
+            box-shadow: inset 0 0 20px #000;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 10px;
+            flex-shrink: 0;
+            /* Don't squash */
+        }
+
+        /* Inner decorative circle */
+        .joystick-scope::after {
+            content: '';
+            position: absolute;
+            width: 50%;
+            height: 50%;
+            border: 1px dashed #333;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .joystick-helper-text {
+            color: #555;
+            font-size: 14px;
+            margin-top: 10px;
+            text-align: center;
+            pointer-events: none;
         }
 
         .zoom-area {
@@ -150,6 +294,13 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
+            gap: 30px;
+            background: #080808;
+            border-left: 1px solid #222;
+        }
+
+        .zoom-row {
+            display: flex;
             gap: 20px;
         }
 
@@ -173,6 +324,44 @@
             background: #444;
             transform: scale(0.95);
             color: #fff;
+        }
+
+        /* Speed Slider */
+        .speed-view {
+            width: 80%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .speed-label {
+            font-size: 12px;
+            color: #888;
+        }
+
+        input[type=range] {
+            width: 100%;
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #0088ff;
+            cursor: pointer;
+            margin-top: -8px;
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            background: #333;
+            border-radius: 2px;
         }
 
         /* PRESETS GRID */
@@ -300,52 +489,121 @@
 
         /* Lock Button */
         .lock-btn {
-            position: absolute;
-            bottom: 200px;
+            position: fixed;
+            /* Fixed to viewport */
+            bottom: 30px;
             right: 20px;
-            width: 50px;
-            height: 50px;
+            width: 60px;
+            height: 60px;
             border-radius: 50%;
-            background: rgba(0, 0, 0, 0.5);
-            border: 2px solid #edaf20ae;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #edaf20;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 24px;
-            color: #edaf20ae;
-            z-index: 100;
+            font-size: 28px;
+            color: #edaf20;
+            z-index: 1000;
+            /* High z-index */
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+            cursor: pointer;
         }
 
         .lock-btn.locked {
-            background: #edaf20ae;
+            background: #edaf20;
             color: #000;
-            border-color: #edaf20ae;
+            border-color: #edaf20;
+            box-shadow: 0 0 15px #edaf20;
         }
 
-        /* Lock Overlay (Invisible blocker) */
+        /* Lock Blockers */
         #input-blocker {
-            position: absolute;
-            top: 60px;
+            position: fixed;
+            top: 0;
             left: 0;
             width: 100%;
-            height: calc(100% - 60px);
-            z-index: 90;
+            height: 100%;
+            z-index: 999;
             display: none;
+            background: rgba(0, 0, 0, 0);
+        }
+
+        /* PRESET ACTIONS */
+        .preset-actions-row {
+            display: flex;
+            gap: 15px;
+            padding: 10px;
+            background: #111;
+            border-top: 1px solid #222;
+            flex-shrink: 0;
+        }
+
+        .p-action-btn {
+            flex: 1;
+            padding: 15px;
+            border-radius: 8px;
+            border: none;
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        .btn-set-global {
+            background: #0088ff;
+        }
+
+        .btn-set-global:active {
+            background: #0066cc;
+        }
+
+        .btn-set-global:disabled {
+            background: #222;
+            color: #555;
+            cursor: not-allowed;
+        }
+
+        .btn-del-global {
+            background: #ff4444;
+        }
+
+        .btn-del-global:active {
+            background: #cc0000;
+        }
+
+        .btn-del-global:disabled {
+            background: #222;
+            color: #555;
+            cursor: not-allowed;
         }
     </style>
 </head>
 
 <body>
 
+    <!-- Portrait Warning -->
+    <div id="portrait-warning">
+        <div style="font-size: 40px; margin-bottom: 20px;">⟳</div>
+        <h2>請旋轉螢幕</h2>
+        <p>此應用程式僅支援橫向模式<br>Please rotate your device</p>
+    </div>
+
     <!-- Login -->
     <div id="login-screen">
         <div class="login-box">
-            <h2>Remote Login</h2>
+            <img src="icon_w.png" class="login-logo" alt="PTZ Control Logo">
             <input type="text" id="roomId" placeholder="Room ID">
             <input type="text" id="username" placeholder="Your Name">
             <input type="password" id="password" placeholder="Password">
             <button class="btn" onclick="attemptLogin()" id="loginBtn">Connect</button>
             <p id="login-msg" style="color: #ff5252; margin-top: 15px; display: none; font-size: 14px;"></p>
+        </div>
+
+        <!-- Server Download Section -->
+        <div class="download-section">
+            <h3>Server Download</h3>
+            <p>若要架設本地控制伺服器，<br>請下載 Windows 伺服器端程式：</p>
+            <a href="downloads/PTZcntrl-Setup.exe" class="download-btn" download>⬇ 下載 </a>
         </div>
     </div>
 
@@ -353,15 +611,25 @@
     <div id="app-screen">
         <header>
             <div class="menu-btn" onclick="toggleDrawer()">☰</div>
-            <div id="cam-title" class="cam-title" onclick="renameCamera()">Camera 1</div>
+            <div id="cam-title" class="cam-title" onclick="renameCamera()">裝置尚未連線</div>
             <div id="status-dot" class="status-dot"></div>
         </header>
 
         <div class="main-controls">
-            <div id="zone_joystick" class="joystick-area"></div>
+            <div class="joystick-area">
+                <div id="joystick-scope" class="joystick-scope"></div>
+                <div class="joystick-helper-text">拖曳任一方向即可移動鏡頭</div>
+            </div>
             <div class="zoom-area">
-                <div class="zoom-btn" id="btn-zoom-in" oncontextmenu="return false;">+</div>
-                <div class="zoom-btn" id="btn-zoom-out" oncontextmenu="return false;">-</div>
+                <div class="zoom-row">
+                    <div class="zoom-btn" id="btn-zoom-in" oncontextmenu="return false;">+</div>
+                    <div class="zoom-btn" id="btn-zoom-out" oncontextmenu="return false;">-</div>
+                </div>
+                <div class="speed-view">
+                    <span class="speed-label" id="speed-label">Speed: 50%</span>
+                    <input type="range" id="speed-slider" min="1" max="100" value="50"
+                        oninput="updateSpeed(this.value)">
+                </div>
             </div>
         </div>
 
@@ -371,17 +639,26 @@
             </div>
         </div>
 
+        <!-- Global Preset Actions -->
+        <div class="preset-actions-row">
+            <button id="btn-set-global" class="p-action-btn btn-set-global" onclick="onSetClick()" disabled>設定
+                (Set)</button>
+            <button id="btn-del-global" class="p-action-btn btn-del-global" onclick="onDelClick()" disabled>刪除
+                (Del)</button>
+        </div>
+
         <!-- Float Lock -->
         <div class="lock-btn" id="lock-btn" onclick="toggleLock()">🔒</div>
-
-        <!-- Input Blocker -->
-        <div id="input-blocker" onclick="toggleLock()"></div>
 
         <!-- Drawer -->
         <div id="drawer-overlay" class="modal-overlay" onclick="toggleDrawer()">
             <div id="cam-drawer" class="drawer" onclick="event.stopPropagation()">
                 <h3 style="border-bottom:1px solid #444; padding-bottom:10px; margin-top:0;">Cameras</h3>
                 <div id="cam-list"></div>
+                <div class="cam-item" onclick="location.reload()"
+                    style="color: #ff4444; border-top: 1px solid #333; margin-top: 20px;">
+                    登出 (Logout)
+                </div>
             </div>
         </div>
     </div>
@@ -399,10 +676,25 @@
         let username = null;
         let clientId = 'web_' + Math.random().toString(36).substr(2, 9);
         let currentCamId = 'ALL';
-        let currentCamName = 'All Cameras';
+        let currentCamName = '尚未連線';
+        let moveSpeed = 50;
+        let serverIp = null;
         let joystickManager = null;
         let zoomInterval = null;
         let isLocked = false;
+
+        // Prevent Default Scrolling GLOBALLY
+        // Fix for "Layout Exploded" -> if layout breaks, browser might scroll. 
+        // We force block it.
+        document.body.addEventListener('touchmove', function (e) {
+            // Exceptions for scrollable areas
+            if (e.target.closest('.presets-area') || e.target.closest('.drawer') || e.target.closest('.console-body')) {
+                return; // Let it bubble/scroll naturally
+            }
+
+            // Block everything else to prevent "Exploeded" layout scrolling
+            if (e.cancelable) e.preventDefault();
+        }, { passive: false });
 
         // --- LOGIN LOGIC ---
         function attemptLogin() {
@@ -444,6 +736,17 @@
         }
 
         function enterApp() {
+            document.body.classList.add('app-active'); // Enable Portrait Warning
+
+            // Try Fullscreen
+            try {
+                if (document.documentElement.requestFullscreen) {
+                    document.documentElement.requestFullscreen();
+                } else if (document.documentElement.webkitRequestFullscreen) { /* Safari */
+                    document.documentElement.webkitRequestFullscreen();
+                }
+            } catch (e) { console.log("Fullscreen blocked"); }
+
             document.getElementById('login-screen').style.display = 'none';
             document.getElementById('app-screen').style.display = 'flex';
 
@@ -460,6 +763,12 @@
                 }
             });
 
+            // Listen for Server IP to filter
+            db.ref(`rooms/${currentRoom}/status/ip`).once('value', snap => {
+                serverIp = snap.val();
+                loadCameras(); // Reload cams if IP eventually arrives
+            });
+
             // Clean up on disconnect
             db.ref(`rooms/${currentRoom}/sessions/${clientId}`).onDisconnect().remove();
 
@@ -467,17 +776,28 @@
             initZoom();
             loadCameras();
             renderPresets();
+
+            // Force Layout Update
+            window.dispatchEvent(new Event('resize'));
         }
 
         // --- JOYSTICK ---
         function initJoystick() {
-            const zone = document.getElementById('zone_joystick');
+            const zone = document.getElementById('joystick-scope');
+            if (joystickManager) joystickManager.destroy();
+
+            // Calculate size based on actual scope size
+            const rect = zone.getBoundingClientRect();
+            const size = Math.min(rect.width, rect.height) * 0.5; // 50% of container
+
             joystickManager = nipplejs.create({
                 zone: zone,
                 mode: 'static',
                 position: { left: '50%', top: '50%' },
                 color: '#0088ff',
-                size: 150
+                size: size,
+                restOpacity: 0.8,
+                catchDistance: 200
             });
 
             joystickManager.on('move', (evt, data) => {
@@ -499,7 +819,8 @@
                 else action = 'PAN_RIGHT';
 
                 // Send Throttled Command
-                throttleCommand(action, parseInt(force * 50));
+                // Send Throttled Command
+                throttleCommand(action, parseInt(force * moveSpeed));
             });
 
             joystickManager.on('end', () => {
@@ -547,27 +868,54 @@
 
         // --- CAMERAS ---
         function loadCameras() {
+            if (!currentRoom) return;
             db.ref(`rooms/${currentRoom}/devices`).on('value', snap => {
                 const list = document.getElementById('cam-list');
-                list.innerHTML = `<div class="cam-item ${currentCamId === 'ALL' ? 'active' : ''}" onclick="selectCam('ALL', 'All Cameras')">All Cameras</div>`;
+                const title = document.getElementById('cam-title');
+                list.innerHTML = '';
 
                 const val = snap.val();
+                let validCameras = [];
+
                 if (val) {
                     Object.keys(val).forEach(key => {
                         const dev = val[key];
-                        // Get Name if exists, else generic
-                        const name = dev.name || `IP: ${dev.ip}`;
-                        if (key === currentCamId) {
-                            currentCamName = name;
-                            document.getElementById('cam-title').innerText = name;
-                        }
-
-                        const item = document.createElement('div');
-                        item.className = `cam-item ${currentCamId === key ? 'active' : ''}`;
-                        item.innerText = name;
-                        item.onclick = () => selectCam(key, name);
-                        list.appendChild(item);
+                        if (serverIp && dev.ip === serverIp) return; // Filter Server IP
+                        validCameras.push({ id: key, name: dev.name || `IP: ${dev.ip}` });
                     });
+                }
+
+                if (validCameras.length === 0) {
+                    title.innerText = "裝置尚未連線";
+                    currentCamId = null;
+                    list.innerHTML = '<div class="cam-item">沒有可用的攝影機</div>';
+                    return;
+                }
+
+                // Add All Cameras Option
+                const allItem = document.createElement('div');
+                allItem.className = `cam-item ${currentCamId === 'ALL' ? 'active' : ''}`;
+                allItem.innerText = "All Cameras";
+                allItem.onclick = () => selectCam('ALL', 'All Cameras');
+                list.appendChild(allItem);
+
+                validCameras.forEach(cam => {
+                    const item = document.createElement('div');
+                    item.className = `cam-item ${currentCamId === cam.id ? 'active' : ''}`;
+                    item.innerText = cam.name;
+                    item.onclick = () => selectCam(cam.id, cam.name);
+                    list.appendChild(item);
+                });
+
+                // Set Title Logic
+                if (currentCamId === 'ALL') {
+                    title.innerText = "All Cameras";
+                } else if (!validCameras.find(c => c.id === currentCamId)) {
+                    // If current cam disappeared, switch to ALL or Empty
+                    title.innerText = "All Cameras";
+                    currentCamId = "ALL";
+                } else {
+                    title.innerText = currentCamName;
                 }
             });
         }
@@ -581,8 +929,8 @@
         }
 
         function renameCamera() {
-            if (currentCamId === 'ALL') return alert("Cannot rename 'All Cameras'");
-            const newName = prompt("Enter new name for this camera:", currentCamName);
+            if (!currentCamId || currentCamId === 'ALL') return alert("無法重新命名 'All Cameras'");
+            const newName = prompt("輸入新的攝影機名稱:", currentCamName);
             if (newName) {
                 db.ref(`rooms/${currentRoom}/devices/${currentCamId}/name`).set(newName);
             }
@@ -606,55 +954,31 @@
         function renderPresets() {
             const grid = document.getElementById('preset-grid');
             grid.innerHTML = '';
+            selectedPresetId = null;
+            updateGlobalButtons();
 
-            // Generate 10 slots
             for (let i = 1; i <= 10; i++) {
                 const card = document.createElement('div');
                 card.className = 'preset-card';
                 card.id = `preset-${i}`;
+                card.innerHTML = `<div class="p-num">${i}</div>`;
 
-                card.innerHTML = `
-                    <div class="p-num">${i}</div>
-                    <div class="p-actions">
-                        <button class="action-btn btn-set" onclick="setPreset(${i}, event)">SET</button>
-                        <button class="action-btn btn-del" onclick="delPreset(${i}, event)">DEL</button>
-                    </div>
-                `;
-
-                // Load State
-                if (currentCamId !== 'ALL') {
+                if (currentCamId && currentCamId !== 'ALL') {
                     db.ref(`rooms/${currentRoom}/devices/${currentCamId}/presets/${i}`).on('value', snap => {
                         if (snap.exists()) {
                             card.classList.add('set');
-                            // card.querySelector('.btn-set').innerText = 'UPD'; // Update?
                         } else {
                             card.classList.remove('set');
                         }
+                        // Re-check buttons if currently selected
+                        if (selectedPresetId === i) updateGlobalButtons();
                     });
                 }
 
-                // Click to Call
                 card.onclick = () => {
                     if (isLocked) return;
-                    // Show actions? Or just call? 
-                    // User asked for "Two Buttons: Set & Delete". 
-                    // Let's make Single Tap = Show Actions? Or Long Press?
-                    // User said: "Two buttons... one set, one delete... if preset not set, delete disabled"
-
-                    // Revised behavior based on prompt:
-                    // "Move camera -> Click 'Set Preest' -> Confirm -> Success"
-                    // Maybe the prompt implies a separate "Set Mode"?
-                    // But "Preset Grid" usually implies clickable recall.
-                    // Let's do: Tap = Call (if set) OR Show Set (if empty).
-                    // Long Press = Show Menu (Set/Delete).
-
-                    // Actually prompt says: "Below... 10 preset slots. 2 buttons (Set, Del)..." 
-                    // Maybe "Set" and "Delete" are GLOBAL buttons that apply to the SELECTED slot?
-                    // "Select slot (highlight) -> Click Set/Del".
-
                     selectPresetSlot(i);
                 };
-
                 grid.appendChild(card);
             }
         }
@@ -662,87 +986,96 @@
         let selectedPresetId = null;
 
         function selectPresetSlot(id) {
-            if (isLocked) return;
-
-            // If we want to implement "Select then Act":
-            // 1. Highlight the card.
-            // But usually just tapping "Set" on the card is easier.
-            // Let's implement the overlay "Actions" on Click for now to be safe with touch.
-            // Or better:
-            // Tap = Call (if set).
-            // Tap = Prompt Set (if empty).
-            // Long Press = Context Menu (Delete/Update).
-
-            // Re-reading prompt: "此頁面往下滑可設定10個預設點位，兩個按鈕一個是設定預設位置，一個是刪除預設位..."
-            // "10 preset points... two buttons, one is Set, one is Delete... if no preset set, button is black..."
-            // It sounds like there are 10 slots AND 2 separate buttons?
-            // OR each slot has 2 buttons?
-            // Let's assume "Select Slot -> Press Set/Delete Button".
-
-            // Implementation:
-            // Click Preset Card -> Highlights it.
-            // If it has data -> Call it immediately? OR just highlight? 
-            // "Selected has backlight".
-
             if (selectedPresetId) {
                 document.getElementById(`preset-${selectedPresetId}`).classList.remove('active');
             }
             selectedPresetId = id;
-            document.getElementById(`preset-${id}`).classList.add('active');
+            const card = document.getElementById(`preset-${id}`);
+            card.classList.add('active');
 
-            // If it exists, call it?
-            if (document.getElementById(`preset-${id}`).classList.contains('set')) {
+            updateGlobalButtons();
+
+            if (card.classList.contains('set')) {
                 sendCommand('PRESET_CALL', id);
             }
         }
 
-        // Let's add the global SET/DEL buttons below grid?
-        // Or inject them into the logic.
-        // I will follow the "Select then Act" approach since prompt mentions "Selected has backlight".
+        function updateGlobalButtons() {
+            const btnSet = document.getElementById('btn-set-global');
+            const btnDel = document.getElementById('btn-del-global');
 
-        // UPDATE: Adding Global Set/Delete Buttons below grid in HTML
+            if (selectedPresetId === null) {
+                btnSet.disabled = true;
+                btnDel.disabled = true;
+                return;
+            }
 
-        function setPreset(id, e) {
-            e.stopPropagation();
-            if (!confirm(`Set Preset ${id}?`)) return;
-            sendCommand('PRESET_SET', id);
+            btnSet.disabled = false;
+            const card = document.getElementById(`preset-${selectedPresetId}`);
+            if (card && card.classList.contains('set')) {
+                btnDel.disabled = false;
+            } else {
+                btnDel.disabled = true;
+            }
+        }
+
+        function onSetClick() {
+            if (!selectedPresetId) return;
+            const confirmMsg = `是否設定預設點 ${selectedPresetId}？\n(Set Preset ${selectedPresetId}?)`;
+            if (!confirm(confirmMsg)) return;
+
+            sendCommand('PRESET_SET', selectedPresetId);
+
             // Optimistic update
-            if (currentCamId !== 'ALL') {
-                db.ref(`rooms/${currentRoom}/devices/${currentCamId}/presets/${id}`).set({
+            if (currentCamId && currentCamId !== 'ALL') {
+                db.ref(`rooms/${currentRoom}/devices/${currentCamId}/presets/${selectedPresetId}`).set({
                     timestamp: firebase.database.ServerValue.TIMESTAMP
                 });
             }
         }
 
-        function delPreset(id, e) {
-            e.stopPropagation();
-            if (!confirm(`Delete Preset ${id}?`)) return;
-            if (currentCamId !== 'ALL') {
-                db.ref(`rooms/${currentRoom}/devices/${currentCamId}/presets/${id}`).remove();
+        function onDelClick() {
+            if (!selectedPresetId) return;
+            const confirmMsg = `是否刪除預設點 ${selectedPresetId}？\n(Delete Preset ${selectedPresetId}?)`;
+            if (!confirm(confirmMsg)) return;
+
+            if (currentCamId && currentCamId !== 'ALL') {
+                db.ref(`rooms/${currentRoom}/devices/${currentCamId}/presets/${selectedPresetId}`).remove();
             }
         }
 
         // --- SCREEN LOCK ---
+        // Just Visual now since we block scroll globally
         function toggleLock() {
             isLocked = !isLocked;
             const btn = document.getElementById('lock-btn');
-            const blocker = document.getElementById('input-blocker');
+            // const blocker = document.getElementById('input-blocker');
             if (isLocked) {
                 btn.classList.add('locked');
-                blocker.style.display = 'block';
+                // blocker.style.display = 'block';
             } else {
                 btn.classList.remove('locked');
-                blocker.style.display = 'none';
+                // blocker.style.display = 'none';
             }
         }
 
         // --- COMMANDS ---
-        function sendCommand(action, speed = 50) {
+        function updateSpeed(val) {
+            moveSpeed = parseInt(val);
+            document.getElementById('speed-label').innerText = `Speed: ${val}%`;
+        }
+
+        // --- COMMANDS ---
+        function sendCommand(action, speed = null) {
+            // If speed not provided, use global moveSpeed. 
+            // EXCEPT for Presets (where speed arg is ID).
+            const finalSpeed = (speed !== null) ? speed : moveSpeed;
+
             if (!currentRoom) return;
             db.ref(`rooms/${currentRoom}/commands`).push({
                 action: action,
                 target: currentCamId,
-                speed: speed,
+                speed: finalSpeed,
                 password: pword,
                 username: username,
                 timestamp: firebase.database.ServerValue.TIMESTAMP
