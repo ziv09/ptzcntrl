@@ -43,19 +43,63 @@ async function stop(device) {
 /**
  * Map generic action to Panasonic CGI command
  */
+const MAX_DELTA = 49;
+const BASE_VAL = 50;
+
+/**
+ * Map generic action to Panasonic CGI command with variable speed
+ */
 function mapCommandToCgi(action, speed) {
+    // Ensure speed is 0-100
+    const safeSpeed = Math.max(0, Math.min(100, speed));
+    const speedDelta = Math.round((safeSpeed / 100) * MAX_DELTA);
+
+    // Default to Center (Stop)
+    let panVal = BASE_VAL;
+    let tiltVal = BASE_VAL;
+    let zoomVal = BASE_VAL;
+
     switch (action) {
-        case 'PAN_LEFT': return 'P01';
-        case 'PAN_RIGHT': return 'P99';
-        case 'TILT_UP': return 'T99';
-        case 'TILT_DOWN': return 'T01';
-        case 'ZOOM_IN': return 'Z99';
-        case 'ZOOM_OUT': return 'Z01';
-        case 'STOP': return 'P50T50Z50';
-        case 'PRESET_CALL': return `R${String(speed).padStart(2, '0')}`;
-        case 'PRESET_SET': return `M${String(speed).padStart(2, '0')}`;
-        default: return 'P50T50';
+        case 'PAN_LEFT':
+            panVal = BASE_VAL - speedDelta;
+            break;
+        case 'PAN_RIGHT':
+            panVal = BASE_VAL + speedDelta;
+            break;
+        case 'TILT_UP':
+            tiltVal = BASE_VAL + speedDelta;
+            break;
+        case 'TILT_DOWN':
+            tiltVal = BASE_VAL - speedDelta;
+            break;
+        case 'ZOOM_IN':
+            zoomVal = BASE_VAL + speedDelta; // 50-99
+            return `Z${pad(zoomVal)}`;
+        case 'ZOOM_OUT':
+            zoomVal = BASE_VAL - speedDelta; // 50-01
+            return `Z${pad(zoomVal)}`;
+        case 'STOP':
+            return 'PTS5050'; // Or P50T50Z50
+        case 'PRESET_CALL':
+            return `R${pad(speed)}`;
+        case 'PRESET_SET':
+            return `M${pad(speed)}`;
     }
+
+    // Clamp values 01-99
+    panVal = clamp(panVal, 1, 99);
+    tiltVal = clamp(tiltVal, 1, 99);
+
+    // Return PTS string e.g. PTS4550 for slow left
+    return `PTS${pad(panVal)}${pad(tiltVal)}`;
+}
+
+function pad(num) {
+    return Math.round(num).toString().padStart(2, '0');
+}
+
+function clamp(num, min, max) {
+    return Math.min(Math.max(num, min), max);
 }
 
 /**
