@@ -51,20 +51,85 @@ serverApp.use(bodyParser.json());
 serverApp.use(express.static(path.join(__dirname, 'public')));
 
 // Manual Device Addition with Protocol Selection
-serverApp.post('/api/manual-ip', (req, res) => {
+// Helper: Validate Connection
+async function validateConnection(ip, protocol = null) {
+    const axios = require('axios');
+    const onvif = require('node-onvif');
+
+    // If protocol specified, check only that
+    const protocolsToCheck = protocol ? [protocol] : ['onvif', 'panasonic', 'visca', 'ndi'];
+
+    for (const p of protocolsToCheck) {
+        try {
+            if (p === 'panasonic') {
+                const res = await axios.get(`http://${ip}/cgi-bin/aw_ptz?cmd=%23O&res=1`, { timeout: 3000 });
+                if (res.status === 200) return 'panasonic';
+            }
+            else if (p === 'onvif') {
+                const device = new onvif.OnvifDevice({ xaddr: `http://${ip}/onvif/device_service` });
+                await device.init();
+                return 'onvif';
+            }
+            else if (p === 'visca') {
+                // VISCA over IP (UDP 52381) Port Check
+                const dgram = require('dgram');
+                const detected = await new Promise((resolve) => {
+                    const socket = dgram.createSocket('udp4');
+                    // Simple Inquiry: CAM_PowerInq? (8x 09 04 00 FF) or just handshake
+                    // We'll trust the port open check mostly, or basic packet
+                    const buf = Buffer.from([0x81, 0x09, 0x00, 0x02, 0xFF]);
+                    socket.send(buf, 52381, ip);
+                    socket.on('message', () => { socket.close(); resolve(true); });
+                    socket.on('error', () => { socket.close(); resolve(false); });
+                    setTimeout(() => { socket.close(); resolve(false); }, 1500);
+                });
+                if (detected) return 'visca';
+            }
+            else if (p === 'ndi') {
+                // NDI check? Usually HTTP on port 80 or specific NDI discovery.
+                // Try fetching NDI root page?
+                try {
+                    await axios.get(`http://${ip}/`, { timeout: 2000 });
+                    return 'ndi';
+                } catch (e) { }
+            }
+        } catch (e) {
+            // console.log(`[Validation] ${p} failed for ${ip}`);
+        }
+    }
+    return null;
+}
+
+// Manual Device Addition with Protocol Selection
+serverApp.post('/api/manual-ip', async (req, res) => {
     const { ip, protocol, port, name, username, password } = req.body;
     if (ip) {
-        const device = addDevice({
-            ip: ip,
-            protocol: protocol || 'panasonic',
-            port: port,
-            name: name || `Camera (${ip})`,
-            username: username,
-            password: password
-        });
-        devices = getDevices();
-        res.json({ success: true, device, devices });
-        updateDashboard();
+        console.log(`[API] Manual Add Request: ${ip} (${protocol || 'auto'})`);
+
+        try {
+            // VALIDATE CONNECTION FIRST
+            const validProtocol = await validateConnection(ip, protocol);
+
+            if (!validProtocol) {
+                return res.status(400).json({ error: `無法連線至 ${ip}。請確認 IP 正確且攝影機已開機。` });
+            }
+
+            const device = addDevice({
+                ip: ip,
+                protocol: protocol || validProtocol, // Use detected protocol if auto
+                port: port,
+                name: name || `Camera (${ip})`,
+                username: username,
+                password: password
+            });
+            devices = getDevices();
+            updateDashboard();
+            res.json({ success: true, device, devices });
+
+        } catch (e) {
+            console.error("Manual add error:", e);
+            res.status(500).json({ error: e.message });
+        }
     } else {
         res.status(400).json({ error: "Missing IP" });
     }

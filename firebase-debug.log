@@ -1,0 +1,104 @@
+[debug] [2026-02-08T13:39:58.175Z] ----------------------------------------------------------------------
+[debug] [2026-02-08T13:39:58.177Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\wfsya\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only hosting
+[debug] [2026-02-08T13:39:58.178Z] CLI Version:   15.5.1
+[debug] [2026-02-08T13:39:58.178Z] Platform:      win32
+[debug] [2026-02-08T13:39:58.178Z] Node Version:  v22.20.0
+[debug] [2026-02-08T13:39:58.178Z] Time:          Sun Feb 08 2026 21:39:58 GMT+0800 (台北標準時間)
+[debug] [2026-02-08T13:39:58.178Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-02-08T13:39:59.300Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-02-08T13:39:59.300Z] > authorizing via signed-in user (wfs.yang9050@gmail.com)
+[debug] [2026-02-08T13:39:59.300Z] [iam] checking project ptzcntrl for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-02-08T13:39:59.301Z] Checked if tokens are valid: true, expires at: 1770560312325
+[debug] [2026-02-08T13:39:59.301Z] Checked if tokens are valid: true, expires at: 1770560312325
+[debug] [2026-02-08T13:39:59.302Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/ptzcntrl:testIamPermissions [none]
+[debug] [2026-02-08T13:39:59.302Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/ptzcntrl:testIamPermissions  x-goog-user-project=ptzcntrl
+[debug] [2026-02-08T13:39:59.302Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/ptzcntrl:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-02-08T13:40:07.573Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/ptzcntrl:testIamPermissions 200
+[debug] [2026-02-08T13:40:07.573Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/ptzcntrl:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-02-08T13:40:07.574Z] Checked if tokens are valid: true, expires at: 1770560312325
+[debug] [2026-02-08T13:40:07.574Z] Checked if tokens are valid: true, expires at: 1770560312325
+[debug] [2026-02-08T13:40:07.574Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/ptzcntrl [none]
+[debug] [2026-02-08T13:40:13.597Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/ptzcntrl 200
+[debug] [2026-02-08T13:40:13.597Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/ptzcntrl {"projectId":"ptzcntrl","projectNumber":"954477007166","displayName":"ptzcntrl","name":"projects/ptzcntrl","resources":{"hostingSite":"ptzcntrl","realtimeDatabaseInstance":"ptzcntrl-default-rtdb"},"state":"ACTIVE","etag":"1_e50d697e-88ab-4e9a-9bea-36d1da42e7a7"}
+[info] 
+[info] === Deploying to 'ptzcntrl'...
+[info] 
+[info] i  deploying hosting 
+[debug] [2026-02-08T13:40:13.602Z] Checked if tokens are valid: true, expires at: 1770560312325
+[debug] [2026-02-08T13:40:13.602Z] Checked if tokens are valid: true, expires at: 1770560312325
+[debug] [2026-02-08T13:40:13.602Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/ptzcntrl/versions [none]
+[debug] [2026-02-08T13:40:13.602Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/ptzcntrl/versions {"status":"CREATED","labels":{"deployment-tool":"cli-firebase"}}
+[debug] [2026-02-08T13:40:22.177Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/ptzcntrl/versions 200
+[debug] [2026-02-08T13:40:22.177Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/ptzcntrl/versions {"name":"projects/954477007166/sites/ptzcntrl/versions/f814d36b4fc1dac8","status":"CREATED","config":{},"labels":{"deployment-tool":"cli-firebase"}}
+[info] i  hosting[ptzcntrl]: beginning deploy... 
+[info] i  hosting[ptzcntrl]: found 2 files in hosting/public 
+[debug] [2026-02-08T13:40:22.187Z] [hosting] uploading with 200 concurrency
+[debug] [2026-02-08T13:40:22.194Z] Checked if tokens are valid: true, expires at: 1770560312325
+[debug] [2026-02-08T13:40:22.194Z] Checked if tokens are valid: true, expires at: 1770560312325
+[debug] [2026-02-08T13:40:22.195Z] [hosting] hash cache [aG9zdGluZ1xwdWJsaWM] stored for 2 files
+[debug] [2026-02-08T13:40:22.195Z] [hosting][hash queue][FINAL] {"max":5,"min":0,"avg":2.5,"active":0,"complete":2,"success":2,"errored":0,"retried":0,"total":2,"elapsed":6}
+[debug] [2026-02-08T13:40:22.195Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/954477007166/sites/ptzcntrl/versions/f814d36b4fc1dac8:populateFiles [none]
+[debug] [2026-02-08T13:40:22.195Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/954477007166/sites/ptzcntrl/versions/f814d36b4fc1dac8:populateFiles {"files":{"/icon_w.png":"ead46ca562572ad1734d4b96084b98c4b63ff3053eb3dac88de99b159a5be40c","/index.html":"eb96986362fbb8965200213a7b6e76006c0cf9d70d8b06bb5340de4e9bba5d8e"}}
+[debug] [2026-02-08T13:40:23.973Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/954477007166/sites/ptzcntrl/versions/f814d36b4fc1dac8:populateFiles 200
+[debug] [2026-02-08T13:40:23.973Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/954477007166/sites/ptzcntrl/versions/f814d36b4fc1dac8:populateFiles {"uploadRequiredHashes":["eb96986362fbb8965200213a7b6e76006c0cf9d70d8b06bb5340de4e9bba5d8e"],"uploadUrl":"https://upload-firebasehosting.googleapis.com/upload/sites/ptzcntrl/versions/f814d36b4fc1dac8/files"}
+[debug] [2026-02-08T13:40:23.973Z] Checked if tokens are valid: true, expires at: 1770560312325
+[debug] [2026-02-08T13:40:23.973Z] Checked if tokens are valid: true, expires at: 1770560312325
+[debug] [2026-02-08T13:40:23.973Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/ptzcntrl/versions/f814d36b4fc1dac8/files/eb96986362fbb8965200213a7b6e76006c0cf9d70d8b06bb5340de4e9bba5d8e [none]
+[debug] [2026-02-08T13:40:23.973Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/ptzcntrl/versions/f814d36b4fc1dac8/files/eb96986362fbb8965200213a7b6e76006c0cf9d70d8b06bb5340de4e9bba5d8e [stream]
+[debug] [2026-02-08T13:40:23.974Z] [hosting][populate queue][FINAL] {"max":1779,"min":1779,"avg":1779,"active":0,"complete":1,"success":1,"errored":0,"retried":0,"total":1,"elapsed":1780}
+[debug] [2026-02-08T13:40:23.974Z] [hosting] uploads queued: 1
+[debug] [2026-02-08T13:40:34.441Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/ptzcntrl/versions/f814d36b4fc1dac8/files/eb96986362fbb8965200213a7b6e76006c0cf9d70d8b06bb5340de4e9bba5d8e 200
+[debug] [2026-02-08T13:40:34.441Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/ptzcntrl/versions/f814d36b4fc1dac8/files/eb96986362fbb8965200213a7b6e76006c0cf9d70d8b06bb5340de4e9bba5d8e [stream]
+[debug] [2026-02-08T13:40:34.442Z] [hosting][upload queue][FINAL] {"max":10468,"min":10468,"avg":10468,"active":0,"complete":1,"success":1,"errored":0,"retried":0,"total":1,"elapsed":10469}
+[info] +  hosting[ptzcntrl]: file upload complete 
+[debug] [2026-02-08T13:40:34.442Z] [hosting] deploy completed after 12263ms
+[debug] [2026-02-08T13:40:34.442Z] [
+  {
+    "config": {
+      "public": "hosting/public",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "rewrites": [
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ],
+      "site": "ptzcntrl"
+    },
+    "version": "projects/954477007166/sites/ptzcntrl/versions/f814d36b4fc1dac8"
+  }
+]
+[info] i  hosting[ptzcntrl]: finalizing version... 
+[debug] [2026-02-08T13:40:34.444Z] Checked if tokens are valid: true, expires at: 1770560312325
+[debug] [2026-02-08T13:40:34.444Z] Checked if tokens are valid: true, expires at: 1770560312325
+[debug] [2026-02-08T13:40:34.444Z] >>> [apiv2][query] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/ptzcntrl/versions/f814d36b4fc1dac8 updateMask=status%2Cconfig
+[debug] [2026-02-08T13:40:34.444Z] >>> [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/ptzcntrl/versions/f814d36b4fc1dac8 {"status":"FINALIZED","config":{"rewrites":[{"glob":"**","path":"/index.html"}]}}
+[debug] [2026-02-08T13:40:41.875Z] <<< [apiv2][status] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/ptzcntrl/versions/f814d36b4fc1dac8 200
+[debug] [2026-02-08T13:40:41.875Z] <<< [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/ptzcntrl/versions/f814d36b4fc1dac8 {"name":"projects/954477007166/sites/ptzcntrl/versions/f814d36b4fc1dac8","status":"FINALIZED","config":{"rewrites":[{"glob":"**","path":"/index.html"}]},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-02-08T13:40:21.764736Z","createUser":{"email":"wfs.yang9050@gmail.com"},"finalizeTime":"2026-02-08T13:40:41.788082Z","finalizeUser":{"email":"wfs.yang9050@gmail.com"}}
+[debug] [2026-02-08T13:40:41.875Z] [hosting] finalized version for ptzcntrl:[object Object]
+[info] +  hosting[ptzcntrl]: version finalized 
+[info] i  hosting[ptzcntrl]: releasing new version... 
+[debug] [2026-02-08T13:40:41.876Z] Checked if tokens are valid: true, expires at: 1770560312325
+[debug] [2026-02-08T13:40:41.876Z] Checked if tokens are valid: true, expires at: 1770560312325
+[debug] [2026-02-08T13:40:41.876Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/ptzcntrl/channels/live/releases versionName=projects%2F954477007166%2Fsites%2Fptzcntrl%2Fversions%2Ff814d36b4fc1dac8
+[debug] [2026-02-08T13:40:41.876Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/ptzcntrl/channels/live/releases {}
+[debug] [2026-02-08T13:40:43.657Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/ptzcntrl/channels/live/releases 200
+[debug] [2026-02-08T13:40:43.657Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/ptzcntrl/channels/live/releases {"name":"projects/954477007166/sites/ptzcntrl/channels/live/releases/1770558042944000","version":{"name":"projects/954477007166/sites/ptzcntrl/versions/f814d36b4fc1dac8","status":"FINALIZED","config":{"rewrites":[{"glob":"**","path":"/index.html"}]},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-02-08T13:40:21.764736Z","createUser":{"email":"wfs.yang9050@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJEc2qYr9PPoDkoCyMFgpl2zewWPG-36sMtP2irucyYNZUqOUE"},"finalizeTime":"2026-02-08T13:40:41.788082Z","finalizeUser":{"email":"wfs.yang9050@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJEc2qYr9PPoDkoCyMFgpl2zewWPG-36sMtP2irucyYNZUqOUE"}},"type":"DEPLOY","releaseTime":"2026-02-08T13:40:42.944Z","releaseUser":{"email":"wfs.yang9050@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJEc2qYr9PPoDkoCyMFgpl2zewWPG-36sMtP2irucyYNZUqOUE"}}
+[debug] [2026-02-08T13:40:43.657Z] [hosting] release: {"name":"projects/954477007166/sites/ptzcntrl/channels/live/releases/1770558042944000","version":{"name":"projects/954477007166/sites/ptzcntrl/versions/f814d36b4fc1dac8","status":"FINALIZED","config":{"rewrites":[{"glob":"**","path":"/index.html"}]},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-02-08T13:40:21.764736Z","createUser":{"email":"wfs.yang9050@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJEc2qYr9PPoDkoCyMFgpl2zewWPG-36sMtP2irucyYNZUqOUE"},"finalizeTime":"2026-02-08T13:40:41.788082Z","finalizeUser":{"email":"wfs.yang9050@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJEc2qYr9PPoDkoCyMFgpl2zewWPG-36sMtP2irucyYNZUqOUE"}},"type":"DEPLOY","releaseTime":"2026-02-08T13:40:42.944Z","releaseUser":{"email":"wfs.yang9050@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJEc2qYr9PPoDkoCyMFgpl2zewWPG-36sMtP2irucyYNZUqOUE"}}
+[info] +  hosting[ptzcntrl]: release complete 
+[info] 
+[info] +  Deploy complete! 
+[info] 
+[info] Project Console: https://console.firebase.google.com/project/ptzcntrl/overview
+[info] Hosting URL: https://ptzcntrl.web.app
+[debug] [2026-02-08T13:40:53.665Z] Error: Timed out.
+    at Timeout._onTimeout (C:\Users\wfsya\AppData\Roaming\npm\node_modules\firebase-tools\lib\utils.js:308:49)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[error] 
+[error] Error: An unexpected error has occurred.
