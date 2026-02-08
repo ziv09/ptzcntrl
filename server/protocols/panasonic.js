@@ -30,6 +30,12 @@ async function sendCommand(device, action, params = 50) {
         speed = params;
     }
 
+    // Debug Log
+    if (action === 'PTZ_VECTOR') {
+        if (vector) console.log(`[Panasonic] VECTOR: x=${vector.x.toFixed(2)}, y=${vector.y.toFixed(2)}, s=${speed}`);
+        else console.log(`[Panasonic] VECTOR: Missing Data!`);
+    }
+
     const cgiParams = mapCommandToCgi(action, speed, vector);
 
     // Deduplication: If same as last command for this IP, skip

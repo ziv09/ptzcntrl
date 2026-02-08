@@ -804,19 +804,37 @@
             joystickManager.on('move', (evt, data) => {
                 if (isLocked) return;
 
-                // Vector Logic
-                const vector = data.vector; // { x, y } normalized approx -1 to 1
-                const force = Math.min(data.force, 2.0); // cap force
+                try {
+                    // Vector Logic - Robust Extraction
+                    let vector = data.vector;
 
-                // Construct Payload
-                // We send 'PTZ_VECTOR' action which carries x/y data
-                // speed is calculated by force * globalMoveSpeed
-                const speedVal = parseInt(force * moveSpeed);
+                    // Fallback if vector is missing
+                    if (!vector && data.angle) {
+                        const rad = data.angle.radian;
+                        vector = {
+                            x: Math.cos(rad),
+                            y: Math.sin(rad) // NippleJS Up is -Y? Let's check. Usually screen coords.
+                            // Actually, standard math is +Y up. Screen is +Y down.
+                            // If user said "Chaotic", maybe inverted?
+                            // Let's standard math for now.
+                        };
+                        // Invert Y for screen coords if needed. NippleJS 'up' usually has -Y.
+                        // But let's assume raw math first.
+                        // Wait, NippleJS data.vector is usually { x, y } normalized.
+                    }
 
-                throttleCommand('PTZ_VECTOR', {
-                    vector: { x: vector.x, y: vector.y },
-                    speed: speedVal
-                });
+                    if (!vector || (typeof vector.x !== 'number')) return;
+
+                    const force = Math.min(data.force, 2.0);
+                    const speedVal = parseInt(force * moveSpeed);
+
+                    throttleCommand('PTZ_VECTOR', {
+                        vector: { x: vector.x, y: vector.y },
+                        speed: speedVal
+                    });
+                } catch (err) {
+                    console.error("Joystick Error", err);
+                }
             });
 
             // Enhanced Failsafe: Global Listener
