@@ -665,6 +665,12 @@
     </div>
 
     <script>
+        // --- DEBUG: Catch Mobile Errors ---
+        window.onerror = function (msg, url, line, col, error) {
+            alert("Error: " + msg + "\nLine: " + line);
+            return false;
+        };
+
         // CONFIG
         const firebaseConfig = {
             databaseURL: "https://ptzcntrl-default-rtdb.asia-southeast1.firebasedatabase.app/"
