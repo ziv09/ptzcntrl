@@ -7,7 +7,7 @@ const serviceAccount = require('./serviceAccountKey.json');
 const os = require('os');
 const ip = require('ip');
 const fs = require('fs');
-const { autoDiscovery, addDevice, getDevices } = require('./discovery');
+const { autoDiscovery, addDevice, getDevices, removeDevice } = require('./discovery');
 const { sendPtzCommand, getSupportedProtocols } = require('./ptz');
 const { verifyCommand, sanitizeCommand } = require('./security');
 
@@ -70,9 +70,34 @@ serverApp.post('/api/manual-ip', (req, res) => {
     }
 });
 
+// Delete Device API
+serverApp.delete('/api/device/:id', (req, res) => {
+    const { id } = req.params;
+    if (removeDevice(id)) {
+        devices = getDevices();
+        updateDashboard();
+        res.json({ success: true, devices });
+    } else {
+        res.status(404).json({ error: "Device not found" });
+    }
+});
+
 // Get supported protocols
 serverApp.get('/api/protocols', (req, res) => {
     res.json({ protocols: getSupportedProtocols() });
+});
+
+// Scan Network (Trigger Auto Discovery)
+serverApp.post('/api/scan-network', async (req, res) => {
+    console.log('[API] Triggering network scan...');
+    try {
+        const discovered = await autoDiscovery();
+        devices = getDevices();
+        updateDashboard();
+        res.json({ success: true, count: discovered.length, devices });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 // Auto-probe IP to detect protocol
@@ -403,10 +428,26 @@ function startFirebaseListener(room) {
             const user = cmdData.username || 'Unknown';
             const action = cmdData.action;
             const target = cmdData.target || 'ALL';
-            logBuffer(`CMD: ${action} > ${target} (${user})`);
 
-            // Send to PTZ
-            await sendPtzCommand(cmdData, devices);
+            // Handle RENAME Command
+            if (action === 'RENAME') {
+                const newName = cmdData.name;
+                if (target && devices[target] && newName) {
+                    devices[target].name = newName;
+                    logBuffer(`Renamed ${target} to "${newName}"`);
+                    updateDashboard();
+                }
+            }
+            // Handle PTZ Commands
+            else {
+                logBuffer(`CMD: ${action} > ${target} (${user})`);
+
+                // Send to PTZ - DO NOT AWAIT to prevent blocking STOP commands
+                // Fire and forget, but log errors
+                sendPtzCommand(cmdData, devices).catch(err => {
+                    console.error(`[PTZ] Error: ${err}`);
+                });
+            }
         } else {
             logBuffer(`CMD Failed: Auth Error for ${cmdData.action}`, 'error');
         }
@@ -416,10 +457,10 @@ function startFirebaseListener(room) {
     });
 
     // 3. Update Devices (from Auto Discovery)
-    setInterval(() => {
-        // Periodically update device list in Firebase if changed
-        // For now, just keep alive
-    }, 10000);
+    // setInterval(() => {
+    //     // Periodically update device list in Firebase if changed
+    //     // For now, just keep alive
+    // }, 10000);
 }
 
 function updateDashboard() {

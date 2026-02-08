@@ -258,9 +258,17 @@
                 <h3>裝置管理 (Services & Devices)</h3>
 
                 <label>新增裝置</label>
-                <div class="inline-form">
-                    <input type="text" id="manualIp" placeholder="IP 位址 (自動偵測協議)">
-                    <button style="width: 100px;" onclick="addIp()">自動偵測</button>
+                <div class="form-group">
+                    <input type="text" id="manualIp" placeholder="IP 位址">
+                    <div style="display:flex; gap:10px; margin-top:5px;">
+                        <button onclick="addIpManual()" style="flex:1; background:#444;">手動新增</button>
+                        <button onclick="addIpProbe()" style="flex:1;">偵測新增</button>
+                    </div>
+                </div>
+
+                <div style="margin-top:10px; border-top:1px dashed #333; padding-top:10px;">
+                    <button onclick="startNetworkScan()" style="width:100%; background:#2c3e50;">全網掃描 (Scan
+                        Network)</button>
                 </div>
 
                 <label>已連線裝置</label>
@@ -337,11 +345,32 @@
             }
         }
 
-        async function addIp() {
+        // Manual Add (Blind)
+        async function addIpManual() {
+            const ip = document.getElementById('manualIp').value;
+            if (!ip) return;
+            try {
+                const res = await fetch('/api/manual-ip', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ip, protocol: 'panasonic' })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('已新增 (預設 Panasonic)');
+                    document.getElementById('manualIp').value = '';
+                    updateStatus();
+                } else {
+                    alert('新增失敗: ' + data.error);
+                }
+            } catch (e) { alert(e.message); }
+        }
+
+        // Probe Add
+        async function addIpProbe() {
             const ip = document.getElementById('manualIp').value;
             if (!ip) return;
 
-            // Show loading state
             const btn = event.target;
             btn.disabled = true;
             btn.innerText = '偵測中...';
@@ -355,17 +384,52 @@
                 const data = await res.json();
                 if (data.success) {
                     document.getElementById('manualIp').value = '';
-                    alert(`成功! 偵測到: ${data.device.type} (${data.device.protocol})`);
+                    alert(`成功! 偵測到: ${data.device.type}`);
                     updateStatus();
                 } else {
-                    alert('偵測失敗: ' + (data.error || '未知錯誤'));
+                    alert('偵測失敗');
                 }
             } catch (e) {
-                alert('連線錯誤: ' + e.message);
+                alert('錯誤: ' + e.message);
             } finally {
                 btn.disabled = false;
-                btn.innerText = '自動偵測';
+                btn.innerText = '偵測新增';
             }
+        }
+
+        // Scan Network
+        async function startNetworkScan() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerText = '掃描中 (請稍候)...';
+            try {
+                const res = await fetch('/api/scan-network', { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    alert(`掃描完成! 發現 ${data.count} 個裝置`);
+                    updateStatus();
+                } else {
+                    alert('掃描失敗: ' + data.error);
+                }
+            } catch (e) { alert(e.message); }
+            finally {
+                btn.disabled = false;
+                btn.innerText = '全網掃描 (Scan Network)';
+            }
+        }
+
+        // Delete Device
+        async function deleteDevice(id) {
+            if (!confirm('確定要刪除此裝置嗎？')) return;
+            try {
+                const res = await fetch(`/api/device/${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.success) {
+                    updateStatus();
+                } else {
+                    alert('刪除失敗');
+                }
+            } catch (e) { alert(e.message); }
         }
 
         async function updateStatus() {
@@ -415,15 +479,18 @@
                 if (Object.keys(devs).length === 0) {
                     devContainer.innerHTML = '<div style="text-align:center; color:#666; padding:10px;">無裝置</div>';
                 } else {
-                    devContainer.innerHTML = Object.values(devs).map(d =>
-                        `<div class="list-item">
-                            <span>${d.ip}</span>
-                            <span class="badge">${d.type === 'manual' ? '手動' : '自動'}</span>
+                    devContainer.innerHTML = Object.entries(devs).map(([id, d]) =>
+                        `<div class="list-item" style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <div style="font-weight:bold;">${d.ip}</div>
+                                <div style="font-size:11px; color:#888;">${d.name} (${d.protocol || 'panasonic'})</div>
+                            </div>
+                            <button onclick="deleteDevice('${id}')" style="padding:2px 8px; font-size:12px; background:#c62828; width:auto; margin:0;">刪除</button>
                         </div>`
                     ).join('');
                 }
 
-                // Render Users
+                // Render Logs
                 const userContainer = document.getElementById('user-list');
                 const users = data.users || [];
                 if (users.length === 0) {

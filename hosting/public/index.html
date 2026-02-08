@@ -882,7 +882,8 @@
                     Object.keys(val).forEach(key => {
                         const dev = val[key];
                         if (serverIp && dev.ip === serverIp) return; // Filter Server IP
-                        validCameras.push({ id: key, name: dev.name || `IP: ${dev.ip}` });
+                        // Default name is IP (without "IP: " prefix per user request)
+                        validCameras.push({ id: key, name: dev.name || dev.ip });
                     });
                 }
 
@@ -931,9 +932,17 @@
 
         function renameCamera() {
             if (!currentCamId || currentCamId === 'ALL') return alert("無法重新命名 'All Cameras'");
-            const newName = prompt("輸入新的攝影機名稱:", currentCamName);
-            if (newName) {
-                db.ref(`rooms/${currentRoom}/devices/${currentCamId}/name`).set(newName);
+            const newName = prompt("輸入新的攝影機名稱 (Enter new name):", currentCamName);
+            if (newName && newName !== currentCamName) {
+                // Send RENAME command to Server so it updates local state & syncs back
+                db.ref(`rooms/${currentRoom}/commands`).push({
+                    action: 'RENAME',
+                    target: currentCamId,
+                    name: newName,
+                    password: pword,
+                    username: username,
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                });
             }
         }
 
