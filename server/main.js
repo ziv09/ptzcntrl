@@ -440,7 +440,7 @@ function startFirebaseListener(room) {
             }
             // Handle PTZ Commands
             else {
-                // logBuffer(`CMD: ${action} > ${target} (${user})`);
+                logBuffer(`CMD: ${action} > ${target} (${user})`);
 
                 // Send to PTZ - DO NOT AWAIT to prevent blocking STOP commands
                 // Fire and forget, but log errors
