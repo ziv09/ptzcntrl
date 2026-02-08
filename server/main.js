@@ -423,6 +423,7 @@ function startFirebaseListener(room) {
 }
 
 function updateDashboard() {
+    // 1. Update Electron GUI
     if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('status-update', {
             ip: ip.address(),
@@ -431,6 +432,25 @@ function updateDashboard() {
             deviceCount: Object.keys(devices).length,
             onlineUsers // To be implemented
         });
+    }
+
+    // 2. Sync Devices to Firebase (Crucial for Web App)
+    if (firebaseConnected && activeRoomRef) {
+        // Transform devices object for Firebase (remove non-serializable if any)
+        const devicesUpdate = {};
+        Object.keys(devices).forEach(key => {
+            devicesUpdate[key] = {
+                name: devices[key].name,
+                ip: devices[key].ip,
+                protocol: devices[key].protocol || 'panasonic',
+                port: devices[key].port,
+                status: 'online' // Assume online if in list
+            };
+        });
+
+        // Update specific devices node 
+        // We use 'update' to avoid wiping other potential data, though 'set' might be cleaner for full sync
+        activeRoomRef.child('devices').update(devicesUpdate);
     }
 }
 
