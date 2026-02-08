@@ -490,8 +490,10 @@ function updateDashboard() {
         });
 
         // Update specific devices node 
-        // We use 'update' to avoid wiping other potential data, though 'set' might be cleaner for full sync
-        activeRoomRef.child('devices').update(devicesUpdate);
+        // We use 'set' to FORCE sync and remove ghosts
+        activeRoomRef.child('devices').set(devicesUpdate).catch(err => {
+            console.error("[Firebase] Sync Error:", err);
+        });
     }
 }
 
