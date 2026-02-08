@@ -689,7 +689,7 @@
         // We force block it.
         document.body.addEventListener('touchmove', function (e) {
             // Exceptions for scrollable areas
-            if (e.target.closest('.presets-area') || e.target.closest('.drawer') || e.target.closest('.console-body')) {
+            if (e.target.closest('.presets-area') || e.target.closest('.drawer') || e.target.closest('.console-body') || e.target.tagName === 'INPUT') {
                 return; // Let it bubble/scroll naturally
             }
 
@@ -827,6 +827,11 @@
             joystickManager.on('end', () => {
                 sendCommand('STOP');
             });
+
+            // Failsafe: Force STOP on release of the area itself
+            // sometimes nipplejs end event might be missed if finger slides off
+            zone.addEventListener('touchend', () => sendCommand('STOP'));
+            zone.addEventListener('mouseup', () => sendCommand('STOP'));
         }
 
         let lastCmdTime = 0;
