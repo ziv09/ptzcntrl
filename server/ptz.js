@@ -17,8 +17,8 @@ const protocols = {
     ndi
 };
 
-// Global Watchdog Timer
-let watchdogTimer = null;
+// Per-Device Watchdog Timers
+const deviceWatchdogs = {};
 
 /**
  * Send PTZ command to device(s)
@@ -26,29 +26,41 @@ let watchdogTimer = null;
  * @param {Object} devices - Device registry
  */
 async function sendPtzCommand(cmd, devices) {
-    // 1. Reset Watchdog for MOVE commands
-    if (cmd.action.startsWith('PAN') || cmd.action.startsWith('TILT') || cmd.action.startsWith('ZOOM')) {
-        resetWatchdog(devices);
-    }
-
-    // 2. Resolve Target Camera(s)
-    const targets = [];
+    // Resolve Target Camera(s)
+    let targets = [];
     if (cmd.target === 'ALL' || !cmd.target) {
-        Object.values(devices).forEach(d => targets.push(d));
+        targets = Object.values(devices);
     } else {
         const dev = devices[cmd.target];
         if (dev) targets.push(dev);
     }
 
-    // 3. Send commands to each target
+    // Process each target
     const promises = targets.map(device => {
-        const protocol = device.protocol || 'panasonic'; // Default to panasonic
+        const protocol = device.protocol || 'panasonic';
         const handler = protocols[protocol];
 
-        if (!handler) {
-            console.error(`[PTZ] Unknown protocol: ${protocol}`);
-            return Promise.resolve({ success: false, error: 'Unknown protocol' });
+        if (!handler) return Promise.resolve();
+
+        const devId = Object.keys(devices).find(key => devices[key] === device) || device.ip;
+
+        // --- WATCHDOG LOGIC ---
+        // 1. Clear existing timer for this device
+        if (deviceWatchdogs[devId]) {
+            clearTimeout(deviceWatchdogs[devId]);
+            delete deviceWatchdogs[devId];
         }
+
+        // 2. If this is a MOVE command, set a new "Dead Man's Switch" timer
+        // If we don't hear from this device again in 600ms, Force Stop.
+        if (cmd.action.startsWith('PAN') || cmd.action.startsWith('TILT') || cmd.action.startsWith('ZOOM')) {
+            deviceWatchdogs[devId] = setTimeout(() => {
+                console.log(`[Watchdog] Timeout for ${device.name || device.ip} -> Force STOP`);
+                handler.stop(device).catch(err => console.error(`[Watchdog] Stop failed: ${err}`));
+                delete deviceWatchdogs[devId];
+            }, 600);
+        }
+        // 3. If STOP, we just cleared the timer above, so we are good.
 
         return handler.sendCommand(device, cmd.action, cmd.speed || 50);
     });
@@ -56,35 +68,7 @@ async function sendPtzCommand(cmd, devices) {
     await Promise.all(promises);
 }
 
-/**
- * Reset watchdog timer - stops cameras if no commands received
- */
-function resetWatchdog(devices) {
-    if (watchdogTimer) clearTimeout(watchdogTimer);
-    watchdogTimer = setTimeout(() => {
-        console.log("Watchdog Triggered: Stopping All Cameras");
-        stopAllCameras(devices);
-    }, 600);
-}
-
-/**
- * Stop all cameras using appropriate protocol
- */
-async function stopAllCameras(devices) {
-    const targets = Object.values(devices);
-
-    const promises = targets.map(device => {
-        const protocol = device.protocol || 'panasonic';
-        const handler = protocols[protocol];
-
-        if (handler) {
-            return handler.stop(device);
-        }
-        return Promise.resolve();
-    });
-
-    await Promise.all(promises);
-}
+// (Removed global resetWatchdog and stopAllCameras as they are replaced by per-device logic)
 
 /**
  * Discover all devices across all protocols
@@ -124,6 +108,5 @@ function getSupportedProtocols() {
 module.exports = {
     sendPtzCommand,
     discoverAll,
-    getSupportedProtocols,
-    stopAllCameras
+    getSupportedProtocols
 };
