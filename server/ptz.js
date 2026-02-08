@@ -25,6 +25,17 @@ const deviceWatchdogs = {};
  * @param {Object} cmd - Command object { action, target, speed }
  * @param {Object} devices - Device registry
  */
+// Per-Device Command Queue (Mutex + Conflation)
+// deviceIp -> boolean (is executing?)
+const deviceBusy = {};
+// deviceIp -> { cmd, device, resolve, reject } (next command to run)
+const devicePending = {};
+
+/**
+ * Send PTZ command to device(s)
+ * @param {Object} cmd - Command object { action, target, speed }
+ * @param {Object} devices - Device registry
+ */
 async function sendPtzCommand(cmd, devices) {
     // Resolve Target Camera(s)
     let targets = [];
@@ -35,38 +46,88 @@ async function sendPtzCommand(cmd, devices) {
         if (dev) targets.push(dev);
     }
 
-    // Process each target
+    // Process each target via Queue
     const promises = targets.map(device => {
         const protocol = device.protocol || 'panasonic';
         const handler = protocols[protocol];
 
         if (!handler) return Promise.resolve();
 
-        // Use IP as the unique key for Watchdog (Robust)
+        // Use IP as key
         const devId = device.ip;
 
-        // --- WATCHDOG LOGIC ---
-        // 1. Clear existing timer for this device (If moving command or STOP command)
+        // --- WATCHDOG LOGIC (Keep existing safety) ---
         if (deviceWatchdogs[devId]) {
             clearTimeout(deviceWatchdogs[devId]);
             delete deviceWatchdogs[devId];
         }
-
-        // 2. If this is a MOVE command (PAN/TILT/ZOOM but NOT STOP), set a new "Dead Man's Switch" timer
-        // If we don't hear from this device again in 600ms, Force Stop.
         if (cmd.action !== 'STOP' && (cmd.action.startsWith('PAN') || cmd.action.startsWith('TILT') || cmd.action.startsWith('ZOOM'))) {
             deviceWatchdogs[devId] = setTimeout(() => {
                 console.log(`[Watchdog] Timeout for ${device.name || device.ip} -> Force STOP`);
-                handler.stop(device).catch(err => console.error(`[Watchdog] Stop failed: ${err}`));
+                // Force stop bypasses queue? No, should use queue ideally, but force is force.
+                // Let's call queue with STOP.
+                queueCommand(devId, device, handler, { action: 'STOP' });
                 delete deviceWatchdogs[devId];
             }, 600);
         }
 
-        console.log(`[PTZ] Sending ${cmd.action} to ${devId}`); // Debug Log
-        return handler.sendCommand(device, cmd.action, cmd.speed || 50);
+        // --- QUEUE LOGIC ---
+        return queueCommand(devId, device, handler, cmd);
     });
 
     await Promise.all(promises);
+}
+
+/**
+ * Queue command execution for a device (Mutex + Conflation)
+ */
+function queueCommand(devId, device, handler, cmd) {
+    return new Promise((resolve, reject) => {
+        // If device is busy, update PENDING command (overwrite previous pending)
+        if (deviceBusy[devId]) {
+            // Conflation: We only care about the latest command.
+            // If there was a pending command, we drop it (it's now obsolete).
+            if (devicePending[devId]) {
+                // Optional: reject previous pending? Or just silently drop?
+                // Silently drop is better for PTZ smoothness.
+                // console.log(`[PTZ] Dropped stale command for ${devId}`);
+            }
+            devicePending[devId] = { cmd, device, handler, resolve, reject };
+            return;
+        }
+
+        // If not busy, execute immediately
+        executeCommand(devId, device, handler, cmd, resolve, reject);
+    });
+}
+
+/**
+ * Execute command and process next in queue
+ */
+async function executeCommand(devId, device, handler, cmd, resolve, reject) {
+    deviceBusy[devId] = true;
+
+    // console.log(`[PTZ] Sending ${cmd.action} to ${devId}`);
+
+    try {
+        const result = await handler.sendCommand(device, cmd.action, cmd.speed || 50);
+        resolve(result);
+    } catch (error) {
+        console.error(`[PTZ] Error sending to ${devId}:`, error);
+        resolve({ success: false, error: error.message }); // Don't reject promise chain
+    } finally {
+        // Command finished. Check pending.
+        const next = devicePending[devId];
+        delete devicePending[devId];
+
+        if (next) {
+            // Run next pending command immediately
+            executeCommand(devId, next.device, next.handler, next.cmd, next.resolve, next.reject);
+        } else {
+            // Nothing pending, release lock
+            deviceBusy[devId] = false;
+        }
+    }
 }
 
 // (Removed global resetWatchdog and stopAllCameras as they are replaced by per-device logic)
