@@ -28,30 +28,30 @@ async function sendCommand(device, action, params = 50) {
     const normalizedSpeed = speed / 100;
 
     let endpoint = '/ptz';
-    let params = {};
+    let queryParams = {};
 
     try {
         switch (action) {
             case 'PAN_LEFT':
-                params = { pan_speed: -normalizedSpeed };
+                queryParams = { pan_speed: -normalizedSpeed };
                 break;
             case 'PAN_RIGHT':
-                params = { pan_speed: normalizedSpeed };
+                queryParams = { pan_speed: normalizedSpeed };
                 break;
             case 'TILT_UP':
-                params = { tilt_speed: normalizedSpeed };
+                queryParams = { tilt_speed: normalizedSpeed };
                 break;
             case 'TILT_DOWN':
-                params = { tilt_speed: -normalizedSpeed };
+                queryParams = { tilt_speed: -normalizedSpeed };
                 break;
             case 'ZOOM_IN':
-                params = { zoom_speed: normalizedSpeed };
+                queryParams = { zoom_speed: normalizedSpeed };
                 break;
             case 'ZOOM_OUT':
-                params = { zoom_speed: -normalizedSpeed };
+                queryParams = { zoom_speed: -normalizedSpeed };
                 break;
             case 'STOP':
-                params = { pan_speed: 0, tilt_speed: 0, zoom_speed: 0 };
+                queryParams = { pan_speed: 0, tilt_speed: 0, zoom_speed: 0 };
                 break;
             case 'PRESET_CALL':
                 endpoint = `/ptz/preset/${speed}`;
@@ -69,7 +69,7 @@ async function sendCommand(device, action, params = 50) {
         try {
             // Method 1: Query params
             await axios.get(`${baseUrl}${endpoint}`, {
-                params,
+                params: queryParams,
                 timeout: 2000
             });
         } catch {
@@ -81,7 +81,7 @@ async function sendCommand(device, action, params = 50) {
                 });
             } catch {
                 // Method 3: Direct POST
-                await axios.post(`${baseUrl}/ptz`, params, { timeout: 2000 });
+                await axios.post(`${baseUrl}/ptz`, queryParams, { timeout: 2000 });
             }
         }
 
