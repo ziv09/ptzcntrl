@@ -42,26 +42,27 @@ async function sendPtzCommand(cmd, devices) {
 
         if (!handler) return Promise.resolve();
 
-        const devId = Object.keys(devices).find(key => devices[key] === device) || device.ip;
+        // Use IP as the unique key for Watchdog (Robust)
+        const devId = device.ip;
 
         // --- WATCHDOG LOGIC ---
-        // 1. Clear existing timer for this device
+        // 1. Clear existing timer for this device (If moving command or STOP command)
         if (deviceWatchdogs[devId]) {
             clearTimeout(deviceWatchdogs[devId]);
             delete deviceWatchdogs[devId];
         }
 
-        // 2. If this is a MOVE command, set a new "Dead Man's Switch" timer
+        // 2. If this is a MOVE command (PAN/TILT/ZOOM but NOT STOP), set a new "Dead Man's Switch" timer
         // If we don't hear from this device again in 600ms, Force Stop.
-        if (cmd.action.startsWith('PAN') || cmd.action.startsWith('TILT') || cmd.action.startsWith('ZOOM')) {
+        if (cmd.action !== 'STOP' && (cmd.action.startsWith('PAN') || cmd.action.startsWith('TILT') || cmd.action.startsWith('ZOOM'))) {
             deviceWatchdogs[devId] = setTimeout(() => {
                 console.log(`[Watchdog] Timeout for ${device.name || device.ip} -> Force STOP`);
                 handler.stop(device).catch(err => console.error(`[Watchdog] Stop failed: ${err}`));
                 delete deviceWatchdogs[devId];
             }, 600);
         }
-        // 3. If STOP, we just cleared the timer above, so we are good.
 
+        console.log(`[PTZ] Sending ${cmd.action} to ${devId}`); // Debug Log
         return handler.sendCommand(device, cmd.action, cmd.speed || 50);
     });
 
