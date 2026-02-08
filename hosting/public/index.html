@@ -745,15 +745,6 @@
         function enterApp() {
             document.body.classList.add('app-active'); // Enable Portrait Warning
 
-            // Try Fullscreen
-            try {
-                if (document.documentElement.requestFullscreen) {
-                    document.documentElement.requestFullscreen();
-                } else if (document.documentElement.webkitRequestFullscreen) { /* Safari */
-                    document.documentElement.webkitRequestFullscreen();
-                }
-            } catch (e) { console.log("Fullscreen blocked"); }
-
             document.getElementById('login-screen').style.display = 'none';
             document.getElementById('app-screen').style.display = 'flex';
 
