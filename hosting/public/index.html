@@ -691,7 +691,8 @@
         let currentCamName = '尚未連線';
         let moveSpeed = 50;
         let serverIp = null;
-        let joystickManager = null;
+        let joystickManager;
+        let joystickRadius = 100; // Will be set in initJoystick
         let zoomInterval = null;
         let isLocked = false;
 
@@ -801,6 +802,7 @@
             // Calculate size based on actual scope size
             const rect = zone.getBoundingClientRect();
             const size = Math.min(rect.width, rect.height) * 0.5; // 50% of container
+            joystickRadius = size / 2; // Store radius for force normalization
 
             joystickManager = nipplejs.create({
                 zone: zone,
@@ -831,10 +833,13 @@
                     if (!vector || (typeof vector.x !== 'number')) return;
 
                     // STRICT USER MODEL MAPPING:
-                    // 1. Force determines the "Input Magnitude" (0.0 to 1.0)
+                    // 1. Force (distance from center) determines Input Magnitude (0.0 to 1.0)
                     // 2. moveSpeed determines the "Global Speed Limit" (0 to 100)
 
-                    const magnitude = Math.min(data.force, 1.0); // Clamp to 1.0 max per User Spec (-1 to 1)
+                    // CRITICAL FIX: NippleJS force is in PIXELS, not 0-1!
+                    // Normalize by dividing by joystick radius
+                    const normalizedForce = Math.min(data.force / joystickRadius, 1.0);
+                    const magnitude = normalizedForce;
 
                     // Calculate "Raw Joystick Position" (Direction * Magnitude)
                     // This matches the 'x' and 'y' args in User's move(x,y)
@@ -845,8 +850,9 @@
                     const debugDiv = document.getElementById('debug-info');
                     if (debugDiv) {
                         debugDiv.innerHTML = `
-                            Force: ${data.force.toFixed(2)}<br>
-                            Mag: ${magnitude.toFixed(2)}<br>
+                            Force(px): ${data.force.toFixed(1)}<br>
+                            Radius: ${joystickRadius.toFixed(0)}<br>
+                            Normalized: ${normalizedForce.toFixed(2)}<br>
                             Vec.x: ${vector.x.toFixed(2)}<br>
                             Vec.y: ${vector.y.toFixed(2)}<br>
                             Raw.x: ${rawX.toFixed(2)}<br>
