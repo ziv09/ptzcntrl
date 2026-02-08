@@ -849,9 +849,10 @@
                     // DEBUG: Show values on screen
                     const debugDiv = document.getElementById('debug-info');
                     if (debugDiv) {
+                        const safeRadius = Math.max(joystickRadius, 50);
                         debugDiv.innerHTML = `
                             Force(px): ${data.force.toFixed(1)}<br>
-                            Radius: ${joystickRadius.toFixed(0)}<br>
+                            Radius: ${joystickRadius.toFixed(0)} (${safeRadius.toFixed(0)})<br>
                             Normalized: ${normalizedForce.toFixed(2)}<br>
                             Vec.x: ${vector.x.toFixed(2)}<br>
                             Vec.y: ${vector.y.toFixed(2)}<br>
@@ -894,11 +895,14 @@
         }
 
         let lastCmdTime = 0;
-        function throttleCommand(action, speed) {
+        let lastCmd = null;
+        function throttleCommand(action, payload) {
             const now = Date.now();
-            if (now - lastCmdTime > 200) {
-                sendCommand(action, speed);
+            // Reduce throttle interval to 50ms for smoother control
+            if (now - lastCmdTime > 50) {
+                sendCommand(action, payload);
                 lastCmdTime = now;
+                lastCmd = { action, payload };
             }
         }
 
@@ -913,11 +917,11 @@
                     // Stop any existing intervals first
                     if (zoomInterval) clearInterval(zoomInterval);
 
-                    // Send initial command
-                    sendCommand(action);
+                    // Send initial command with speed
+                    sendCommand(action, moveSpeed);
 
-                    // Start auto-repeat
-                    zoomInterval = setInterval(() => sendCommand(action), 200);
+                    // Start auto-repeat with speed
+                    zoomInterval = setInterval(() => sendCommand(action, moveSpeed), 200);
 
                     // Add Global Listeners to catch release ANYWHERE
                     window.addEventListener('touchend', end);

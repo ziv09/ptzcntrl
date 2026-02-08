@@ -49,7 +49,7 @@ async function sendCommand(device, action, params = 50) {
 
     const url = `http://${device.ip}/cgi-bin/aw_ptz?cmd=%23${cgiParams}&res=1`;
 
-    console.log(`[Panasonic] Sending to ${device.ip}: ${cgiParams}`);
+    console.log(`[Panasonic] >>> Action: ${action}, Speed: ${speed}, CGI: ${cgiParams}`);
 
     try {
         await axios.get(url, { timeout: 500 });
@@ -95,8 +95,8 @@ function mapCommandToCgi(action, speed, vector = null) {
 
     // Vector Logic (User Reference Implementation)
     if (action === 'PTZ_VECTOR' && vector) {
-        // Deadzone Check (User Spec: 0.1)
-        const deadzone = 0.1;
+        // Deadzone Check - Reduced from 0.1 to 0.02 for mobile touch sensitivity
+        const deadzone = 0.02;
         if (Math.abs(vector.x) < deadzone && Math.abs(vector.y) < deadzone) {
             return 'P50T50Z50'; // Stop
         }
