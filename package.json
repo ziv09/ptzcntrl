@@ -28,6 +28,12 @@
       "target": "nsis",
       "icon": "build/icon.png"
     },
+    "nsis": {
+      "include": "build/installer.nsh",
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": true
+    },
     "directories": {
       "output": "dist"
     }
