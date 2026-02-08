@@ -620,6 +620,11 @@
             <div class="joystick-area">
                 <div id="joystick-scope" class="joystick-scope"></div>
                 <div class="joystick-helper-text">拖曳任一方向即可移動鏡頭</div>
+                <!-- DEBUG INFO -->
+                <div id="debug-info"
+                    style="position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.8); color: #0f0; padding: 10px; font-family: monospace; font-size: 12px; border-radius: 5px; z-index: 1000;">
+                    Waiting for joystick...
+                </div>
             </div>
             <div class="zoom-area">
                 <div class="zoom-row">
@@ -835,6 +840,20 @@
                     // This matches the 'x' and 'y' args in User's move(x,y)
                     const rawX = vector.x * magnitude;
                     const rawY = vector.y * magnitude;
+
+                    // DEBUG: Show values on screen
+                    const debugDiv = document.getElementById('debug-info');
+                    if (debugDiv) {
+                        debugDiv.innerHTML = `
+                            Force: ${data.force.toFixed(2)}<br>
+                            Mag: ${magnitude.toFixed(2)}<br>
+                            Vec.x: ${vector.x.toFixed(2)}<br>
+                            Vec.y: ${vector.y.toFixed(2)}<br>
+                            Raw.x: ${rawX.toFixed(2)}<br>
+                            Raw.y: ${rawY.toFixed(2)}<br>
+                            Speed: ${moveSpeed}
+                        `;
+                    }
 
                     // Send to Server
                     // speed: The Global Speed Slider value (e.g. 50)
