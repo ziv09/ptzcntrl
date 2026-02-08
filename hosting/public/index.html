@@ -810,25 +810,41 @@
             const setupBtn = (id, action) => {
                 const btn = document.getElementById(id);
                 let interval = null;
+                let isActive = false;
 
-                const start = () => {
-                    if (isLocked) return;
+                const start = (e) => {
+                    if (isLocked || isActive) return;
+                    e.preventDefault();
+                    isActive = true;
+
+                    // Send command
                     sendCommand(action, moveSpeed);
                     interval = setInterval(() => sendCommand(action, moveSpeed), 100);
+
+                    // Add global stop listeners
+                    window.addEventListener('touchend', stop, { once: true });
+                    window.addEventListener('mouseup', stop, { once: true });
                 };
 
-                const stop = () => {
+                const stop = (e) => {
+                    if (!isActive) return;
+                    isActive = false;
+
                     if (interval) {
                         clearInterval(interval);
                         interval = null;
                     }
+
+                    // Force STOP command multiple times to ensure it reaches
                     sendCommand('STOP');
+                    setTimeout(() => sendCommand('STOP'), 50);
                 };
 
                 btn.addEventListener('touchstart', start);
                 btn.addEventListener('mousedown', start);
                 btn.addEventListener('touchend', stop);
                 btn.addEventListener('mouseup', stop);
+                btn.addEventListener('touchcancel', stop); // Important for mobile
                 btn.addEventListener('mouseleave', stop);
             };
 
@@ -837,7 +853,10 @@
             setupBtn('btn-left', 'PAN_LEFT');
             setupBtn('btn-right', 'PAN_RIGHT');
 
-            document.getElementById('btn-stop').addEventListener('click', () => sendCommand('STOP'));
+            document.getElementById('btn-stop').addEventListener('click', () => {
+                sendCommand('STOP');
+                setTimeout(() => sendCommand('STOP'), 50);
+            });
         }
 
         let lastCmdTime = 0;
