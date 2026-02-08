@@ -14,7 +14,13 @@ const DEFAULT_NDI_PORT = 80;
  * Note: NDI PTZ API varies by manufacturer
  * This implements the common HTTP-based approach
  */
-async function sendCommand(device, action, speed = 50) {
+async function sendCommand(device, action, params = 50) {
+    let speed = 50;
+    if (typeof params === 'object') {
+        speed = params.speed || 50;
+    } else {
+        speed = params;
+    }
     const port = device.port || DEFAULT_NDI_PORT;
     const baseUrl = `http://${device.ip}:${port}`;
 

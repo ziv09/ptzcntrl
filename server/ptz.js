@@ -97,7 +97,7 @@ function queueCommand(devId, device, handler, cmd) {
                 }
                 // Don't set busy=true here to avoid messing up the existing lock's cleanup.
                 // Just fire handler.
-                handler.sendCommand(device, cmd.action, cmd.speed || 50)
+                handler.sendCommand(device, cmd.action, { speed: cmd.speed || 50, vector: cmd.vector })
                     .then(res => resolve(res))
                     .catch(err => resolve({ success: false, error: err.message }));
                 return;
@@ -128,7 +128,8 @@ async function executeCommand(devId, device, handler, cmd, resolve, reject) {
     // console.log(`[PTZ] Sending ${cmd.action} to ${devId}`);
 
     try {
-        const result = await handler.sendCommand(device, cmd.action, cmd.speed || 50);
+        // Pass object with speed and vector
+        const result = await handler.sendCommand(device, cmd.action, { speed: cmd.speed || 50, vector: cmd.vector });
         resolve(result);
     } catch (error) {
         console.error(`[PTZ] Error sending to ${devId}:`, error);

@@ -803,25 +803,20 @@
 
             joystickManager.on('move', (evt, data) => {
                 if (isLocked) return;
+
+                // Vector Logic
+                const vector = data.vector; // { x, y } normalized approx -1 to 1
                 const force = Math.min(data.force, 2.0); // cap force
-                // Map vector to Speed (0-100)
-                // We need to determine primary direction or send precise vector?
-                // Server currently takes simple PAN_LEFT etc.
-                // Let's implement 8-way logic for now or modify server for vector.
-                // For "dragging moves", we can send commands intervally.
 
-                // Using Vector to determine direction
-                const angle = data.angle.degree;
-                let action = '';
+                // Construct Payload
+                // We send 'PTZ_VECTOR' action which carries x/y data
+                // speed is calculated by force * globalMoveSpeed
+                const speedVal = parseInt(force * moveSpeed);
 
-                if (angle >= 45 && angle < 135) action = 'TILT_UP';
-                else if (angle >= 135 && angle < 225) action = 'PAN_LEFT';
-                else if (angle >= 225 && angle < 315) action = 'TILT_DOWN';
-                else action = 'PAN_RIGHT';
-
-                // Send Throttled Command
-                // Send Throttled Command
-                throttleCommand(action, parseInt(force * moveSpeed));
+                throttleCommand('PTZ_VECTOR', {
+                    vector: { x: vector.x, y: vector.y },
+                    speed: speedVal
+                });
             });
 
             // Enhanced Failsafe: Global Listener
@@ -1107,20 +1102,37 @@
         }
 
         // --- COMMANDS ---
-        function sendCommand(action, speed = null) {
-            // If speed not provided, use global moveSpeed. 
-            // EXCEPT for Presets (where speed arg is ID).
-            const finalSpeed = (speed !== null) ? speed : moveSpeed;
+        function sendCommand(action, param = 50) {
+            if (!currentRoom || !currentCamId) return;
 
-            if (!currentRoom) return;
-            db.ref(`rooms/${currentRoom}/commands`).push({
+            const targetDevice = currentCamId;
+
+            // Handle overloaded param (int speed OR object payload)
+            let speed = 50;
+            let vector = null;
+
+            if (typeof param === 'object') {
+                speed = param.speed || 50;
+                vector = param.vector || null;
+            } else {
+                speed = param;
+            }
+
+            const cmd = {
                 action: action,
-                target: currentCamId,
-                speed: finalSpeed,
-                password: pword,
+                target: targetDevice,
+                speed: speed,
+                vector: vector, // Add Vector Data
                 username: username,
+                password: roomPassword,
                 timestamp: firebase.database.ServerValue.TIMESTAMP
-            });
+            };
+
+            // Optimistic UI or just send
+            // log("Sending " + action);
+
+            // Push to shared commands queue
+            db.ref(`rooms/${currentRoom}/commands`).push(cmd);
         }
     </script>
 </body>

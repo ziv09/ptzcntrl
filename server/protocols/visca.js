@@ -57,7 +57,13 @@ function sendViscaUdp(ip, port, command) {
  * @param {string} action - PTZ action
  * @param {number} speed - Speed value (0-100)
  */
-async function sendCommand(device, action, speed = 50) {
+async function sendCommand(device, action, params = 50) {
+    let speed = 50;
+    if (typeof params === 'object') {
+        speed = params.speed || 50;
+    } else {
+        speed = params;
+    }
     const port = device.port || VISCA_PORT;
 
     // Map speed to VISCA range (0x01 - 0x18 for pan/tilt)

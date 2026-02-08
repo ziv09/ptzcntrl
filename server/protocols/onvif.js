@@ -41,63 +41,82 @@ async function getDevice(deviceInfo) {
  * @param {string} action - PTZ action
  * @param {number} speed - Speed value (0-100)
  */
-async function sendCommand(deviceInfo, action, speed = 50) {
+async function sendCommand(deviceInfo, action, params = 50) {
+    let speed = 50;
+    let vector = null;
+
+    if (typeof params === 'object') {
+        speed = params.speed || 50;
+        vector = params.vector || null;
+    } else {
+        speed = params;
+    }
+
     try {
         const device = await getDevice(deviceInfo);
         const profileToken = deviceInfo.profileToken || device.getCurrentProfile().token;
 
-        // Normalize speed to -1.0 to 1.0 range
-        const normalizedSpeed = (speed - 50) / 50;
+        // Normalize speed to 0.0 to 1.0 range
+        const normalizedSpeed = (speed) / 100.0;
 
-        let params = {
+        let ptzParams = {
             ProfileToken: profileToken,
             Velocity: { x: 0, y: 0, z: 0 }
         };
 
-        switch (action) {
-            case 'PAN_LEFT':
-                params.Velocity.x = -Math.abs(normalizedSpeed) || -0.5;
-                break;
-            case 'PAN_RIGHT':
-                params.Velocity.x = Math.abs(normalizedSpeed) || 0.5;
-                break;
-            case 'TILT_UP':
-                params.Velocity.y = Math.abs(normalizedSpeed) || 0.5;
-                break;
-            case 'TILT_DOWN':
-                params.Velocity.y = -Math.abs(normalizedSpeed) || -0.5;
-                break;
-            case 'ZOOM_IN':
-                params.Velocity.z = Math.abs(normalizedSpeed) || 0.5;
-                break;
-            case 'ZOOM_OUT':
-                params.Velocity.z = -Math.abs(normalizedSpeed) || -0.5;
-                break;
-            case 'STOP':
-                await device.ptzStop({ ProfileToken: profileToken });
-                return { success: true };
-            case 'PRESET_CALL':
-                await device.ptzGotoPreset({
-                    ProfileToken: profileToken,
-                    PresetToken: String(speed)
-                });
-                return { success: true };
-            case 'PRESET_SET':
-                await device.ptzSetPreset({
-                    ProfileToken: profileToken,
-                    PresetToken: String(speed)
-                });
-                return { success: true };
-            default:
-                return { success: false, error: 'Unknown action' };
+        // Vector Support for ONVIF
+        if (action === 'PTZ_VECTOR' && vector) {
+            ptzParams.Velocity.x = vector.x * normalizedSpeed;
+            // Assuming +Y = Up for ONVIF
+            ptzParams.Velocity.y = vector.y * normalizedSpeed;
+        } else {
+            // Discrete Actions
+            switch (action) {
+                case 'PAN_LEFT':
+                    ptzParams.Velocity.x = -Math.abs(normalizedSpeed) || -0.5;
+                    break;
+                case 'PAN_RIGHT':
+                    ptzParams.Velocity.x = Math.abs(normalizedSpeed) || 0.5;
+                    break;
+                case 'TILT_UP':
+                    ptzParams.Velocity.y = Math.abs(normalizedSpeed) || 0.5;
+                    break;
+                case 'TILT_DOWN':
+                    ptzParams.Velocity.y = -Math.abs(normalizedSpeed) || -0.5;
+                    break;
+                case 'ZOOM_IN':
+                    ptzParams.Velocity.z = Math.abs(normalizedSpeed) || 0.5;
+                    break;
+                case 'ZOOM_OUT':
+                    ptzParams.Velocity.z = -Math.abs(normalizedSpeed) || -0.5;
+                    break;
+                case 'STOP':
+                    await device.services.ptz.stop({ ProfileToken: profileToken });
+                    return { success: true };
+                case 'PRESET_CALL':
+                    await device.services.ptz.gotoPreset({
+                        ProfileToken: profileToken,
+                        PresetToken: String(speed)
+                    });
+                    return { success: true };
+                case 'PRESET_SET':
+                    await device.services.ptz.setPreset({
+                        ProfileToken: profileToken,
+                        PresetToken: String(speed)
+                    });
+                    return { success: true };
+                default:
+                    return { success: false, error: 'Unknown action' };
+            }
         }
 
-        await device.ptzContinuousMove(params);
+        // Send ContinuousMove
+        await device.services.ptz.continuousMove(ptzParams);
         console.log(`[ONVIF] Sent ${action} to ${deviceInfo.ip}`);
         return { success: true };
 
     } catch (error) {
-        console.error(`[ONVIF] Error:`, error.message);
+        console.error(`[ONVIF] Error sending to ${deviceInfo.ip}:`, error.message);
         return { success: false, error: error.message };
     }
 }
