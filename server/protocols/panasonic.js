@@ -79,7 +79,7 @@ function mapCommandToCgi(action, speed) {
             zoomVal = BASE_VAL - speedDelta; // 50-01
             return `Z${pad(zoomVal)}`;
         case 'STOP':
-            return 'PTS5050'; // Or P50T50Z50
+            return 'P50T50Z50'; // Universal STOP (Pan, Tilt, Zoom all stop)
         case 'PRESET_CALL':
             return `R${pad(speed)}`;
         case 'PRESET_SET':
