@@ -819,24 +819,29 @@
                         const rad = data.angle.radian;
                         vector = {
                             x: Math.cos(rad),
-                            y: Math.sin(rad) // NippleJS Up is -Y? Let's check. Usually screen coords.
-                            // Actually, standard math is +Y up. Screen is +Y down.
-                            // If user said "Chaotic", maybe inverted?
-                            // Let's standard math for now.
+                            y: Math.sin(rad)
                         };
-                        // Invert Y for screen coords if needed. NippleJS 'up' usually has -Y.
-                        // But let's assume raw math first.
-                        // Wait, NippleJS data.vector is usually { x, y } normalized.
                     }
 
                     if (!vector || (typeof vector.x !== 'number')) return;
 
-                    const force = Math.min(data.force, 2.0);
-                    const speedVal = parseInt(force * moveSpeed);
+                    // STRICT USER MODEL MAPPING:
+                    // 1. Force determines the "Input Magnitude" (0.0 to 1.0)
+                    // 2. moveSpeed determines the "Global Speed Limit" (0 to 100)
 
+                    const magnitude = Math.min(data.force, 1.0); // Clamp to 1.0 max per User Spec (-1 to 1)
+
+                    // Calculate "Raw Joystick Position" (Direction * Magnitude)
+                    // This matches the 'x' and 'y' args in User's move(x,y)
+                    const rawX = vector.x * magnitude;
+                    const rawY = vector.y * magnitude;
+
+                    // Send to Server
+                    // speed: The Global Speed Slider value (e.g. 50)
+                    // vector: The Joystick Position (e.g. 0.5, 0.5)
                     throttleCommand('PTZ_VECTOR', {
-                        vector: { x: vector.x, y: vector.y },
-                        speed: speedVal
+                        vector: { x: rawX, y: rawY },
+                        speed: moveSpeed
                     });
                 } catch (err) {
                     console.error("Joystick Error", err);
