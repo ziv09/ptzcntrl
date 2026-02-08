@@ -98,7 +98,7 @@ function mapCommandToCgi(action, speed, vector = null) {
         // Deadzone Check - Reduced from 0.1 to 0.02 for mobile touch sensitivity
         const deadzone = 0.02;
         if (Math.abs(vector.x) < deadzone && Math.abs(vector.y) < deadzone) {
-            return 'P50T50Z50'; // Stop
+            return 'PTS5050'; // Stop
         }
 
         // Logic: 50 + round(input * speedFactor)
@@ -138,7 +138,8 @@ function mapCommandToCgi(action, speed, vector = null) {
             zoomVal = BASE_VAL - Math.round(speedFactor); // 50-01
             return `Z${pad(zoomVal)}`;
         case 'STOP':
-            return 'P50T50Z50';
+            // Use PTS format to match move commands
+            return 'PTS5050';
         case 'PRESET_CALL':
             return `R${pad(speed)}`;
         case 'PRESET_SET':
