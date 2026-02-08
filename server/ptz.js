@@ -85,6 +85,24 @@ function queueCommand(devId, device, handler, cmd) {
     return new Promise((resolve, reject) => {
         // If device is busy, update PENDING command (overwrite previous pending)
         if (deviceBusy[devId]) {
+            // PRIORITY BYPASS: If command is STOP, do NOT wait.
+            // Fire immediately in parallel to kill movement ASAP.
+            if (cmd.action === 'STOP') {
+                console.log(`[PTZ] Priority STOP for ${devId} (Bypassing Queue)`);
+                // Attempt to execute immediately (ignoring busy flag lock)
+                // This might cause 2 requests at once, but better than runaway.
+                // We also clear any pending move commands to prevent re-starting.
+                if (devicePending[devId]) {
+                    delete devicePending[devId];
+                }
+                // Don't set busy=true here to avoid messing up the existing lock's cleanup.
+                // Just fire handler.
+                handler.sendCommand(device, cmd.action, cmd.speed || 50)
+                    .then(res => resolve(res))
+                    .catch(err => resolve({ success: false, error: err.message }));
+                return;
+            }
+
             // Conflation: We only care about the latest command.
             // If there was a pending command, we drop it (it's now obsolete).
             if (devicePending[devId]) {

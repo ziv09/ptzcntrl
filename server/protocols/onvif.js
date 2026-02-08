@@ -21,7 +21,8 @@ async function getDevice(deviceInfo) {
     const device = new onvif.OnvifDevice({
         xaddr: `http://${deviceInfo.ip}:${deviceInfo.port || 80}/onvif/device_service`,
         user: deviceInfo.username || 'admin',
-        pass: deviceInfo.password || 'admin'
+        pass: deviceInfo.password || 'admin',
+        timeout: 2000 // Connection timeout
     });
 
     try {

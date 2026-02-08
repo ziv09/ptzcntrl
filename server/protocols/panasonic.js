@@ -18,7 +18,7 @@ async function sendCommand(device, action, speed = 50) {
     console.log(`[Panasonic] Sending to ${device.ip}: ${cgiParams}`);
 
     try {
-        await axios.get(url, { timeout: 2000 });
+        await axios.get(url, { timeout: 500 });
         return { success: true };
     } catch (error) {
         console.error(`[Panasonic] Error sending to ${device.ip}:`, error.message);
@@ -33,7 +33,7 @@ async function sendCommand(device, action, speed = 50) {
 async function stop(device) {
     const url = `http://${device.ip}/cgi-bin/aw_ptz?cmd=%23P50T50Z50&res=1`;
     try {
-        await axios.get(url, { timeout: 1000 });
+        await axios.get(url, { timeout: 500 });
         return { success: true };
     } catch (error) {
         return { success: false, error: error.message };
