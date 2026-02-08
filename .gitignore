@@ -13,5 +13,9 @@ server/serviceAccountKey.json
 .DS_Store
 Thumbs.db
 
+
 # Firebase
 .firebase/
+
+# Installers
+hosting/public/downloads/*.exe
