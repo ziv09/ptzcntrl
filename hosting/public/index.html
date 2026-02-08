@@ -618,24 +618,7 @@
 
         <div class="main-controls">
             <div class="joystick-area">
-                <!-- Simple 4-Direction Buttons -->
-                <div
-                    style="display: grid; grid-template-columns: repeat(3, 80px); gap: 10px; justify-content: center; align-items: center; height: 100%;">
-                    <div></div>
-                    <button class="dir-btn" id="btn-up"
-                        style="width: 80px; height: 80px; font-size: 24px; border-radius: 10px; background: #0088ff; color: white; border: none;">▲</button>
-                    <div></div>
-                    <button class="dir-btn" id="btn-left"
-                        style="width: 80px; height: 80px; font-size: 24px; border-radius: 10px; background: #0088ff; color: white; border: none;">◄</button>
-                    <button class="dir-btn" id="btn-stop"
-                        style="width: 80px; height: 80px; font-size: 16px; border-radius: 10px; background: #ff4444; color: white; border: none;">STOP</button>
-                    <button class="dir-btn" id="btn-right"
-                        style="width: 80px; height: 80px; font-size: 24px; border-radius: 10px; background: #0088ff; color: white; border: none;">►</button>
-                    <div></div>
-                    <button class="dir-btn" id="btn-down"
-                        style="width: 80px; height: 80px; font-size: 24px; border-radius: 10px; background: #0088ff; color: white; border: none;">▼</button>
-                    <div></div>
-                </div>
+                <div id="joystick-zone" class="joystick-scope"></div>
             </div>
             <div class="zoom-area">
                 <div class="zoom-row">
@@ -796,7 +779,7 @@
             // Clean up on disconnect
             db.ref(`rooms/${currentRoom}/sessions/${clientId}`).onDisconnect().remove();
 
-            initDirectionButtons();
+            initJoystick();
             initZoom();
             loadCameras();
             renderPresets();
@@ -805,55 +788,76 @@
             window.dispatchEvent(new Event('resize'));
         }
 
-        // --- DIRECTION BUTTONS (Simple Replacement for Joystick) ---
-        function initDirectionButtons() {
-            const setupBtn = (id, action) => {
-                const btn = document.getElementById(id);
-                let interval = null;
-                let isActive = false;
+        // --- JOYSTICK (Angle-Based, Simple & Reliable) ---
+        function initJoystick() {
+            const zone = document.getElementById('joystick-zone');
+            if (joystickManager) joystickManager.destroy();
 
-                const start = (e) => {
-                    if (isLocked || isActive) return;
-                    e.preventDefault();
-                    isActive = true;
+            const rect = zone.getBoundingClientRect();
+            const size = Math.min(rect.width, rect.height) * 0.6;
 
-                    // Send command
-                    sendCommand(action, moveSpeed);
-                    interval = setInterval(() => sendCommand(action, moveSpeed), 100);
+            joystickManager = nipplejs.create({
+                zone: zone,
+                mode: 'static',
+                position: { left: '50%', top: '50%' },
+                color: '#0088ff',
+                size: size
+            });
 
-                    // Add global stop listeners
-                    window.addEventListener('touchend', stop, { once: true });
-                    window.addEventListener('mouseup', stop, { once: true });
-                };
+            let moveInterval = null;
+            let currentActions = [];
 
-                const stop = (e) => {
-                    if (!isActive) return;
-                    isActive = false;
+            joystickManager.on('move', (evt, data) => {
+                if (isLocked) return;
 
-                    if (interval) {
-                        clearInterval(interval);
-                        interval = null;
-                    }
+                // Get angle in degrees (0 = right, 90 = up, 180 = left, 270 = down)
+                const angle = data.angle.degree;
 
-                    // Force STOP command multiple times to ensure it reaches
-                    sendCommand('STOP');
-                    setTimeout(() => sendCommand('STOP'), 50);
-                };
+                // Map angle to actions (8-direction support)
+                let actions = [];
 
-                btn.addEventListener('touchstart', start);
-                btn.addEventListener('mousedown', start);
-                btn.addEventListener('touchend', stop);
-                btn.addEventListener('mouseup', stop);
-                btn.addEventListener('touchcancel', stop); // Important for mobile
-                btn.addEventListener('mouseleave', stop);
-            };
+                if (angle >= 337.5 || angle < 22.5) {
+                    actions = ['PAN_RIGHT'];
+                } else if (angle >= 22.5 && angle < 67.5) {
+                    actions = ['PAN_RIGHT', 'TILT_UP'];
+                } else if (angle >= 67.5 && angle < 112.5) {
+                    actions = ['TILT_UP'];
+                } else if (angle >= 112.5 && angle < 157.5) {
+                    actions = ['PAN_LEFT', 'TILT_UP'];
+                } else if (angle >= 157.5 && angle < 202.5) {
+                    actions = ['PAN_LEFT'];
+                } else if (angle >= 202.5 && angle < 247.5) {
+                    actions = ['PAN_LEFT', 'TILT_DOWN'];
+                } else if (angle >= 247.5 && angle < 292.5) {
+                    actions = ['TILT_DOWN'];
+                } else if (angle >= 292.5 && angle < 337.5) {
+                    actions = ['PAN_RIGHT', 'TILT_DOWN'];
+                }
 
-            setupBtn('btn-up', 'TILT_UP');
-            setupBtn('btn-down', 'TILT_DOWN');
-            setupBtn('btn-left', 'PAN_LEFT');
-            setupBtn('btn-right', 'PAN_RIGHT');
+                // Only update if actions changed
+                if (JSON.stringify(actions) !== JSON.stringify(currentActions)) {
+                    currentActions = actions;
 
-            document.getElementById('btn-stop').addEventListener('click', () => {
+                    // Clear existing interval
+                    if (moveInterval) clearInterval(moveInterval);
+
+                    // Send initial commands
+                    actions.forEach(action => sendCommand(action, moveSpeed));
+
+                    // Start repeating
+                    moveInterval = setInterval(() => {
+                        actions.forEach(action => sendCommand(action, moveSpeed));
+                    }, 100);
+                }
+            });
+
+            joystickManager.on('end', () => {
+                currentActions = [];
+                if (moveInterval) {
+                    clearInterval(moveInterval);
+                    moveInterval = null;
+                }
+                // Send STOP command
                 sendCommand('STOP');
                 setTimeout(() => sendCommand('STOP'), 50);
             });
